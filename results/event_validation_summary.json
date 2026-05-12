@@ -1,0 +1,149 @@
+{
+  "n_events_total": 40,
+  "n_events_in_alert_window": 24,
+  "alert_window": {
+    "start": "2022-01-01 00:00:00",
+    "end": "2024-12-31 23:00:00"
+  },
+  "recall_global_in_window": 0.8333333333333334,
+  "recall_global_all_events": 0.5,
+  "naive_recall_in_window": 0.75,
+  "precision_at_72h": 0.1478029294274301,
+  "precision_at_7d": 0.20505992010652463,
+  "precision_at_30d": 0.7829560585885486,
+  "fp_rate_per_month_outside_72h": 17.86046511627907,
+  "n_alerts_high": 751,
+  "n_alerts_tp_72h": 111,
+  "alert_precision_tautological_DEPRECATED": 1.0,
+  "_note_precision_tautological": "DEPRECATED: precision sobre intervalos largos cubre casi toda la ventana. Use precision_at_72h o precision_at_7d como metricas no tautologicas.",
+  "n_alerts_orange_or_red": 751,
+  "n_alerts_in_documented_event": 751,
+  "by_magnitude": [
+    {
+      "magnitude": "ALTA",
+      "n_total": 16,
+      "n_in_window": 9,
+      "n_detected": 6,
+      "recall": 0.6666666666666666,
+      "n_naive_detected": 6,
+      "recall_naive": 0.6666666666666666
+    },
+    {
+      "magnitude": "BAJA",
+      "n_total": 1,
+      "n_in_window": 1,
+      "n_detected": 1,
+      "recall": 1.0,
+      "n_naive_detected": 1,
+      "recall_naive": 1.0
+    },
+    {
+      "magnitude": "MEDIA",
+      "n_total": 9,
+      "n_in_window": 6,
+      "n_detected": 6,
+      "recall": 1.0,
+      "n_naive_detected": 5,
+      "recall_naive": 0.8333333333333334
+    },
+    {
+      "magnitude": "MUY_ALTA",
+      "n_total": 14,
+      "n_in_window": 8,
+      "n_detected": 7,
+      "recall": 0.875,
+      "n_naive_detected": 6,
+      "recall_naive": 0.75
+    }
+  ],
+  "by_type": [
+    {
+      "event_type": "CLIMATICO",
+      "n_total": 5,
+      "n_in_window": 2,
+      "n_detected": 2,
+      "recall": 1.0,
+      "n_naive_detected": 2,
+      "recall_naive": 1.0
+    },
+    {
+      "event_type": "GEOPOLITICO",
+      "n_total": 1,
+      "n_in_window": 1,
+      "n_detected": 0,
+      "recall": 0.0,
+      "n_naive_detected": 0,
+      "recall_naive": 0.0
+    },
+    {
+      "event_type": "INFRAESTRUCTURA",
+      "n_total": 6,
+      "n_in_window": 4,
+      "n_detected": 4,
+      "recall": 1.0,
+      "n_naive_detected": 4,
+      "recall_naive": 1.0
+    },
+    {
+      "event_type": "LABORAL",
+      "n_total": 2,
+      "n_in_window": 2,
+      "n_detected": 2,
+      "recall": 1.0,
+      "n_naive_detected": 2,
+      "recall_naive": 1.0
+    },
+    {
+      "event_type": "MERCADO",
+      "n_total": 22,
+      "n_in_window": 13,
+      "n_detected": 11,
+      "recall": 0.8461538461538461,
+      "n_naive_detected": 9,
+      "recall_naive": 0.6923076923076923
+    },
+    {
+      "event_type": "REGULATORIO",
+      "n_total": 4,
+      "n_in_window": 2,
+      "n_detected": 1,
+      "recall": 0.5,
+      "n_naive_detected": 1,
+      "recall_naive": 0.5
+    }
+  ],
+  "system_vs_naive_breakdown": [
+    {
+      "category": "both detect",
+      "n": 18
+    },
+    {
+      "category": "system only",
+      "n": 2
+    },
+    {
+      "category": "naive only",
+      "n": 0
+    },
+    {
+      "category": "neither",
+      "n": 4
+    }
+  ],
+  "n_high_magnitude_misses": 4,
+  "system_recall_n": 24,
+  "system_recall_ci95_low": 0.6414692935030094,
+  "system_recall_ci95_high": 0.9332132367136706,
+  "naive_recall_n": 24,
+  "naive_recall_ci95_low": 0.5510055599484599,
+  "naive_recall_ci95_high": 0.88000633771405,
+  "mcnemar_statistic": 0.0,
+  "mcnemar_pvalue": 0.5,
+  "mcnemar_discordant_sys_only": 2,
+  "mcnemar_discordant_naive_only": 0,
+  "recall_within_24h": 0.16666666666666666,
+  "recall_within_48h": 0.20833333333333334,
+  "recall_within_168h": 0.4166666666666667,
+  "median_lag_hours_detected": 180.0,
+  "p75_lag_hours_detected": 313.0
+}

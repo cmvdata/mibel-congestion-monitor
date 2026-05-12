@@ -1,0 +1,6 @@
+comparison,DM_stat,p_value,verdict_A_vs_bench,significance,n
+Modelo_A_v3 vs AR(1),1.7647426209135444,0.07760703198211871,A mejor,no sig.,8783
+Modelo_A_v3 vs AR(24),1.871531009026617,0.061271515942302957,A mejor,no sig.,8783
+Modelo_A_v3 vs LASSO,1.5625755603693243,0.11815246045599981,A mejor,no sig.,8783
+Modelo_A_v3 vs M0_persist,4.861048825924335,1.167654468225976e-06,A mejor,p<0.05 (sig.),8783
+Modelo_A_v3 vs M0b_zero,3.377128685201084,0.000732467733931097,A mejor,p<0.05 (sig.),8783

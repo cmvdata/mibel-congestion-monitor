@@ -1,0 +1,5 @@
+magnitude,n_total,n_in_window,n_detected,recall,n_naive_detected,recall_naive
+ALTA,16,9,6,0.6666666666666666,6,0.6666666666666666
+BAJA,1,1,1,1.0,1,1.0
+MEDIA,9,6,6,1.0,5,0.8333333333333334
+MUY_ALTA,14,8,7,0.875,6,0.75

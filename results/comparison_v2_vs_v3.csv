@@ -1,0 +1,5 @@
+step,version,rmse,mae,r2,recall_extreme,note
+step1_pre_to_exc,v2_original (con leakage ATC),2.863,0.784,0.635,0.701,PDF v1
+step1_pre_to_exc,v3_clean (sin leakage ATC),5.3817,0.8562,0.3734,0.6833,Reentrenamiento con FEATURES_A_CLEAN
+step3_train2023_test2024,v2_original (con leakage ATC),,,,,PDF v1 no detalla paso 3 separado
+step3_train2023_test2024,v3_clean (sin leakage ATC),3.2075,0.6936,0.5418,0.6456,Reentrenamiento con FEATURES_A_CLEAN

@@ -1,0 +1,61 @@
+# Raw data (too large for GitHub)
+data/raw/
+*.zip
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Environments
+.env
+.venv
+env/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+download_log*.txt
+nohup.out
+
+# Large model files
+*.pkl
+*.joblib
+
+# Parquet files (use CSV versions instead)
+data/*.parquet
+data/residuals_v2.parquet
+
+# Processed data (regenerable from scripts/)
+data/processed/
+
+# Trained model artefacts (regenerable from scripts/)
+models/
+
+# LaTeX build directory (compilation artefacts; .tex master lives in docs/)
+docs/build/
+
+# Claude Code local config
+.claude/
+
+# Third-party paper PDFs (copyright)
+referencias/
+
+# Backup snapshots of results (pre-fix checkpoints)
+results/*_pre_A2real.*
+
+# Trained XGBoost models (regenerable from train_model_v3.py)
+results/xgb_model_A_v3.json
+
+# Event validation output (regenerable from event_panel_validation.py)
+data/event_validation.csv

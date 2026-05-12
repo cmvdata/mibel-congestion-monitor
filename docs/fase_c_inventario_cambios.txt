@@ -1,0 +1,461 @@
+================================================================
+INVENTARIO DE CAMBIOS PARA FASE C — Reescritura de memoria
+Generado: tras tag v3.2.0-post-tanda2
+================================================================
+
+LEYENDA:
+  [MEC] = reemplazo mecánico de cifra X por cifra Y
+  [NAR] = requiere reescritura narrativa (cambia argumento, no solo cifra)
+  [ADD] = métrica nueva, no existía antes
+  [TBD] = decisión pendiente del autor (ej.: ¿añadir sección?)
+
+================================================================
+SECCIÓN: Abstract  (líneas 51-72)
+================================================================
+
+  L60 [MEC] Frase: "Sobre el test 2024 (out-of-sample puro,
+            post-Excepción Ibérica) el modelo obtiene"
+            Actual:  $R^2 = 0{,}652$ y RMSE $= 2{,}79$~€/MWh.
+            Nuevo:   $R^2 = 0{,}539$ y RMSE $= 3{,}22$~€/MWh.
+
+  L62-64 [NAR] Frase: "Los benchmarks econométricos AR(1), AR(24) y
+            LASSO con validación cruzada son batidos por el XGBoost
+            de manera estadísticamente significativa (Diebold--Mariano,
+            $p < 10^{-3}$ en todos los pares)."
+            Cambio fundamental: tras A2-real ya NO es significativo
+            vs AR/LASSO. p-values reales: AR(1) 0,078, AR(24) 0,061,
+            LASSO 0,118.
+            Reescribir: "El XGBoost mantiene RMSE inferior a AR(1),
+            AR(24) y LASSO en el test 2024, pero el test
+            Diebold-Mariano no alcanza significancia al 5% con
+            n=8.783 (p en rango 0,06--0,12). La significancia se
+            mantiene únicamente frente a los benchmarks naïf
+            persistencia y nivel cero (p < 10^{-3})."
+
+  L65-67 [MEC] Cifras de validación externa sin cambio:
+            "83% de los 24~eventos in-window (2022--2024), frente
+             a un 75% del benchmark naïf"
+            Permanece igual (los recalls no han cambiado tras A2-real).
+
+  L68-69 [NAR] Frase: "Los modelos régimen-específicos no baten al
+            unificado pooled en 2 de 3 regímenes."
+            Cambio fundamental: tras A6 + A2-real, el RÉGIME bate al
+            unified en 1 de 3 regímenes (crisis_y_excepcion) por
+            margen amplio (-18,1% RMSE); en pre/post pierde por
+            <2% RMSE (esencialmente empate).
+            Reescribir: "Los modelos régimen-específicos baten al
+            unificado pooled en el régimen Crisis y Excepción Ibérica
+            por margen amplio (-18,1% RMSE), pero el unificado iguala
+            o supera marginalmente al régimen-específico en Pre-crisis
+            y Post-excepción (<2% RMSE en ambas direcciones)."
+
+================================================================
+SECCIÓN: 3. Resultados del modelado
+================================================================
+
+  L232-234 [MEC] Frase: "La Tabla~\ref{tab:t1} reporta las métricas
+            del Modelo~A v3 sobre el test 2024 out-of-sample puro:"
+            Actual:  $R^2 = 0{,}652$, $\mathrm{RMSE} = 2{,}795$~€/MWh,
+                     $\mathrm{MAE} = 0{,}686$~€/MWh y
+                     $\mathrm{Recall@}|\mathrm{spread}|>2 = 0{,}703$.
+            Nuevo:   $R^2 = 0{,}539$, $\mathrm{RMSE} = 3{,}218$~€/MWh,
+                     $\mathrm{MAE} = 0{,}684$~€/MWh y
+                     $\mathrm{Recall@}|\mathrm{spread}|>2 = 0{,}635$.
+
+  L247 [MEC] Tabla 1, fila Modelo A v3:
+            Actual:  Modelo~A v3 (XGBoost) & 2{,}795 & 0{,}686 & 0{,}652 & 0{,}703
+            Nuevo:   Modelo~A v3 (XGBoost) & 3{,}218 & 0{,}684 & 0{,}539 & 0{,}635
+
+  L273-282 [MEC] Tabla 3 — Modelos régime-específicos vs unificado.
+            Reescribir todas las filas con los nuevos valores:
+
+            pre_crisis        & regime_specific & 5,251 & 1,521 → 1,654 & 0,214 → 0,360 & 0,373 → 0,258 & 0,593 → 0,525
+            pre_crisis        & unified         & 5,251 & 1,198 → 1,628 & 0,169 → 0,416 & 0,611 → 0,282 & 0,542 → 0,525
+            crisis_y_excepcion & regime_specific & 3,499 & 2,489 → 2,918 & 0,432 → 0,526 & 0,582 → 0,425 & 0,578 → 0,438
+            crisis_y_excepcion & unified         & 3,499 & 2,536 → 3,565 & 0,370 → 0,643 & 0,566 → 0,142 & 0,531 → 0,469
+            post_excepcion    & regime_specific & 1,757 & 2,187 → 2,295 & 0,534 → 0,505 & 0,276 → 0,203 & 0,500 → 0,500
+            post_excepcion    & unified         & 1,757 & 2,127 → 2,261 & 0,395 → 0,646 & 0,315 → 0,226 & 0,545 → 0,523
+            POOLED_ALL        & unified         & 10,507 & 1,902 → 2,532 & 0,274 → 0,530 & 0,542 → 0,187 & 0,539 → 0,503
+
+            Re-evaluar negritas (\textbf): ahora ganador por régimen es:
+            - pre_crisis  : unified gana RMSE por 1,6%
+            - crisis      : regime gana RMSE por 18,1%  ← cambio principal
+            - post        : unified gana RMSE por 1,5%
+
+  L287-296 [NAR] "Lectura" de Tabla 3 (3 párrafos). Reescritura completa.
+            Actual:  "El modelo unificado pooled bate al régime-específico
+                     en pre_crisis (-26,9% RMSE) y en post_excepcion
+                     (-2,8% RMSE). Sólo en crisis_y_excepcion gana el
+                     específico (-1,9% RMSE), lo que sugiere que la
+                     Excepción Ibérica introduce idiosincrasia tarifaria
+                     que no se aprende bien a partir de los otros
+                     regímenes. El transfer learning entre regímenes
+                     (efectivo en pre_crisis, donde el unificado mejora
+                     explotando información de los regímenes posteriores)
+                     domina en agregado."
+            Nuevo (sugerido):
+                     "El modelo unificado pooled iguala al régime-
+                     específico en pre_crisis y post_excepcion (diferencia
+                     de RMSE <2% en ambas direcciones, no operativamente
+                     relevante) y pierde frente al régime-específico en
+                     crisis_y_excepcion por margen amplio (-18,1% RMSE).
+                     Este último resultado es coherente con la
+                     idiosincrasia tarifaria de la Excepción Ibérica:
+                     el régimen de tope al gas introduce dinámicas no
+                     aprendibles desde los regímenes adyacentes. La
+                     evidencia descarta la hipótesis fuerte de transfer
+                     learning entre regímenes y refuerza la pertinencia
+                     de modelos específicos para periodos regulatorios
+                     no estacionarios."
+
+  L322 [MEC] Tabla 2, fila Modelo_A_v3:
+            Actual:  \textbf{2{,}795} & \textbf{0{,}652} & \textbf{0{,}703} & [2{,}368, 3{,}265] & --- & ---
+            Nuevo:   \textbf{3{,}218} & \textbf{0{,}539} & \textbf{0{,}635} & [2{,}722, 3{,}749] & --- & ---
+
+  L323-325 [MEC] Tabla 2, filas DM (p-values):
+            Actual:  AR(1)  ... $+3{,}90$ & $9{,}65\times 10^{-5}$
+                     AR(24) ... $+4{,}02$ & $5{,}71\times 10^{-5}$
+                     LASSO  ... $+3{,}80$ & $1{,}48\times 10^{-4}$
+            Nuevo:   AR(1)  ... $+1{,}77$ & $0{,}0776$
+                     AR(24) ... $+1{,}87$ & $0{,}0613$
+                     LASSO  ... $+1{,}56$ & $0{,}1182$
+            Nota: las cifras RMSE/R2/Recall/CI del propio AR(1),
+            AR(24) y LASSO NO cambian (son benchmarks fijos), solo
+            cambian las cifras de Modelo_A_v3 y los DM stats/p-values
+            comparativos.
+
+  L326-327 [MEC] M0 y M0b sin cambio sustantivo, pero los DM stats sí
+            cambian de magnitud porque el residual del Modelo A cambió:
+            Actual:  M0  ... $+5{,}26$ & $1{,}45\times 10^{-7}$
+                     M0b ... $+3{,}73$ & $1{,}89\times 10^{-4}$
+            Nuevo:   M0  ... $+4{,}86$ & < $10^{-4}$
+                     M0b ... $+3{,}38$ & $0{,}0007$
+            Ambos siguen siendo significativos al 5%.
+
+  L332-340 [NAR] Párrafo "Lectura" de Tabla 2. Reescritura completa.
+            Actual:  "El Modelo~A v3 bate a todos los benchmarks de
+                     manera estadísticamente significativa
+                     ($p < 10^{-3}$ en todos los pares). While AR(1)
+                     shows lower MAE (0.652 vs 0.686), Model A achieves
+                     substantially lower RMSE (2.795 vs 3.424). This
+                     pattern indicates that Model A outperforms AR(1)
+                     primarily in the tails of the spread distribution,
+                     which is precisely the regime relevant for anomaly
+                     detection."
+            Nuevo (sugerido):
+                     "El Modelo~A v3 mantiene RMSE inferior a todos los
+                     benchmarks competitivos sobre el test 2024, pero
+                     la significancia estadística del trade-off
+                     (Diebold-Mariano, $h=1$, $n=8\,783$) varía con
+                     el benchmark: contra los benchmarks naïf
+                     (persistencia, nivel cero) la mejora es altamente
+                     significativa ($p < 10^{-3}$); contra los
+                     competitivos AR(1), AR(24) y LASSO el DM
+                     positivo no alcanza significancia al 5%
+                     ($p \in [0,06; 0,12]$). El margen RMSE
+                     (Modelo~A v3 = 3,218 vs LASSO = 3,376, AR(1) = 3,424)
+                     se mantiene en favor del Modelo~A, pero la
+                     evidencia formal en cola de la distribución
+                     requiere n mayor para concluir con significancia
+                     5%. La utilidad del modelo se concentra en el
+                     régimen relevante para vigilancia (residuo de
+                     magnitud)."
+
+            Comentario adicional [NAR]: la comparación de MAE
+            cambia. AR(1) MAE = 0,652 vs Modelo A nuevo MAE = 0,684.
+            AR(1) sigue siendo mejor en MAE, ahora también un poco
+            mejor en RMSE proporcionalmente. El relato "Model A wins
+            in tails" sigue válido cualitativamente.
+
+  L342-350 [NAR] Caveat sobre R². Reescritura.
+            Actual:  "El $R^2 = 0{,}652$ es modesto frente a los valores
+                     típicos en la literatura de electricity price
+                     forecasting, que reportan $R^2 > 0{,}85$ con
+                     AR/SARIMA + fundamentales en mercados como EPEX o
+                     PJM (Weron2014). La diferencia se debe a que el
+                     spread bilateral ES--FR es estructuralmente más
+                     ruidoso intra-día que un precio zonal único,
+                     especialmente en regímenes de coupling parcial:
+                     $R^2 = 0{,}65$ es coherente con los valores
+                     reportados para spreads en Bunn2016. Reportamos
+                     esta limitación sin maquillaje."
+            Nuevo (sugerido): mantener la estructura pero ajustar:
+                     "El $R^2 = 0{,}539$ es notablemente modesto frente
+                     a los valores típicos en la literatura de
+                     electricity price forecasting, que reportan
+                     $R^2 > 0{,}85$ con AR/SARIMA + fundamentales en
+                     mercados como EPEX o PJM (Weron2014). La
+                     diferencia se debe a que el spread bilateral
+                     ES--FR es estructuralmente más ruidoso intra-día
+                     que un precio zonal único, especialmente en
+                     regímenes de coupling parcial. El $R^2$ del orden
+                     de 0,5 se encuentra en el rango bajo de los
+                     valores reportados para spreads en Bunn2016.
+                     Reportamos esta limitación sin maquillaje. La
+                     ganancia del modelo se materializa en la cola de
+                     la distribución (residuos extremos), no en el
+                     ajuste medio: $R^2$ no es la métrica relevante
+                     para el caso de uso de vigilancia."
+
+================================================================
+SECCIÓN: 4. Sistema de vigilancia y validación externa
+================================================================
+
+  L405-410 [MEC] Tabla thresholds z régime-específicos:
+            Actual:  crisis_y_excepcion & 1,021 & 1,699 & 6,276 & 8,705
+                     post_excepcion     & 0,715 & 1,646 & 6,168 & 4,349
+            Nuevo:   crisis_y_excepcion & 0,327 & 0,604 & 5,738 & 8,705
+                     post_excepcion     & 0,389 & 1,393 & 6,123 & 4,349
+
+            Nota: el cambio se debe al sigma_floor (A5) y a A2-real,
+            que cambian la distribución del z-score. El n_train por
+            régimen NO cambia.
+
+  L458-461 [MEC] Tabla 4 distribución de alertas:
+            Actual:  Verde   & 23,584 & 89,75
+                     Ámbar   &  2,105 &  8,01
+                     Naranja &    550 &  2,09
+                     Roja    &     38 &  0,14
+            Nuevo:   Verde   & 23,358 & 88,89
+                     Ámbar   &  2,168 &  8,25
+                     Naranja &    690 &  2,63
+                     Roja    &     61 &  0,23
+
+            Total clasificado 26.277 sin cambio.
+
+  L481 [MEC] Episodio 28 ago 2022:
+            Actual:  "(residuo $\approx 99{,}3$ €/MWh)"
+            Nuevo:   "(residuo $\approx 59{,}4$ €/MWh)"
+            Cambio se debe a A2-real (medias móviles con shift).
+
+  L486 [MEC] Episodio 1 may 2023:
+            Actual:  "(residuo $\approx 101{,}4$ €/MWh)"
+            Nuevo:   "(residuo $\approx 97{,}4$ €/MWh)"
+
+  L490 [MEC] Episodio Julio 2023 ("múltiples Alertas Rojas"):
+            Sin cambio narrativo. Ahora detectamos 7 ROJAs (era N
+            no especificado). Puede mencionarse: "(7 Alertas Rojas
+            registradas en el mes)".
+
+  L582-591 [NAR][ADD] Párrafo "Lectura honesta" con McNemar.
+            Actual:  "El sistema bate al naïf en $+8{,}3$ puntos
+                     porcentuales (...) con $n=24$ el test de
+                     proporciones (McNemar pareado) no alcanza
+                     significancia al 5% (la asimetría es 2 vs 0 en
+                     celdas discordantes, $p = 0{,}50$ en el test
+                     exacto bilateral)."
+            Mantener tal cual (los números coinciden con el código
+            tras A12), pero AÑADIR métricas Wilson CI:
+                     "Wilson CI95% para el recall del sistema:
+                     [0,641; 0,933]; para el naïf: [0,551; 0,880].
+                     Los intervalos se solapan, consistente con la
+                     no-significancia del McNemar."
+
+  [TBD] [ADD] Después de L591, AÑADIR subsección 4.5.X "Métricas
+            operativas adicionales":
+            - precision_at_72h = 0,148
+            - precision_at_7d = 0,205
+            - precision_at_30d = 0,783
+            - fp_rate_per_month outside ±72h = 17,86
+            - recall_within_24h = 0,167  (lead time ≤24h)
+            - recall_within_48h = 0,208  (lead time ≤48h)
+            - recall_within_168h = 0,417 (lead time ≤1 semana)
+            - median_lag_hours = 180 (≈7,5 días)
+            - p75_lag_hours = 313 (≈13 días)
+
+            Discusión [NAR]: el lead time mediano de 180h indica
+            que el sistema funciona como filtro retrospectivo más
+            que como alerta operativa temprana. Solo 21% de eventos
+            detectados se capturan en las primeras 48h. Esto es una
+            limitación operativa relevante para vigilancia REMIT II
+            que requiere actuación temprana.
+
+  [TBD] [ADD] Después de L626 (fig:event-validation), AÑADIR subsección
+            "Calibración operativa precision/coverage" (Tanda 2):
+            - Grid 5×5×4 = 100 combinaciones
+            - 4 puntos canónicos por capacidad de analista
+            - Codo Pareto en 4,3 alertas/mes (z_p99 + if_p90 + cusum≥1)
+              con recall 0,833 y precision_72h 0,212 (vs ACTUAL 20,9/mes
+              con misma recall pero precision 0,148)
+            - Recomendación: el sistema actual está sobre-calibrado;
+              el punto "Baja" (codo) domina al ACTUAL en Pareto.
+
+            Plot a referenciar: plots/10_operational_calibration_pareto.png
+            Tabla a referenciar: plots/11_operational_calibration_table.png
+
+================================================================
+SECCIÓN: 5. Limitaciones (líneas 629-672)
+================================================================
+
+  [TBD] [ADD] Añadir nuevo párrafo en limitaciones sobre LEAD TIME:
+            "El sistema actual produce detección retrospectiva, no
+            operativa temprana: la mediana del lag entre el inicio
+            del evento documentado y la primera alerta del sistema
+            es de aproximadamente 7,5 días (180 h), con percentil 75
+            en 13 días. Solo el 21% de los eventos in-window se
+            detectan en las primeras 48 h. Para vigilancia REMIT II
+            que requiera actuación temprana, el sistema actual no
+            es operativamente suficiente; debe usarse como filtro
+            retrospectivo o complementarse con señales de mayor
+            granularidad temporal (oferta bid-level)."
+
+  [TBD] [ADD] Añadir párrafo sobre cascada sobre-calibrada (resultado
+            de Tanda 2):
+            "El barrido de calibración (100 puntos del grid OOS)
+            muestra que la cascada actual está operativamente
+            sobre-disparada: una configuración del codo (z_p99 OOS
+            por régimen + if_p90 OOS + CUSUM≥1) mantiene el recall
+            in-window (0,833) reduciendo la carga operativa a ~4,3
+            alertas/mes (vs 20,9/mes actual) y mejorando la
+            precision_at_72h de 0,148 a 0,212 (+43%). El sistema
+            por defecto se conserva por compatibilidad histórica;
+            la recalibración se reporta como guidance, no como
+            cambio."
+
+  L660-665 [TBD][ADD] Caveat SHAP existente. Añadir:
+            "Adicionalmente, los gráficos SHAP presentados se generaron
+            con el modelo v3 previo a la corrección del leakage
+            estructural en las medias móviles ($A2-real$). El ranking
+            cualitativo de features (lags del spread dominantes, spark
+            spread relevante) se espera estable; los valores absolutos
+            de |SHAP| pueden cambiar tras la corrección. La
+            regeneración está pendiente por incompatibilidad
+            shap+xgboost 3.2."
+
+================================================================
+SECCIÓN: 6. Conclusiones (líneas 678-716)
+================================================================
+
+  L683-686 [NAR] Conclusión 1 "El residuo como señal".
+            Actual:  "Sobre el test 2024 el modelo de fundamentos
+                     obtiene $R^2 = 0{,}65$ y los residuos contienen
+                     información incremental sobre el spread crudo,
+                     materializada en una cascada conservadora de
+                     38~Alertas Rojas en 2022--2024."
+            Nuevo:   "Sobre el test 2024 el modelo de fundamentos
+                     obtiene $R^2 = 0{,}54$ (notablemente modesto
+                     respecto a la literatura de pricing zonal pero
+                     coherente con el ruido intra-día de spreads
+                     bilaterales) y los residuos contienen información
+                     incremental sobre el spread crudo, materializada
+                     en una cascada conservadora de 61~Alertas Rojas
+                     en 2022--2024 (cascada por defecto)."
+
+  L688-693 [NAR] Conclusión 2 "Modelo principal vs benchmarks competitivos".
+            Actual:  "El XGBoost bate a los benchmarks AR(1), AR(24) y
+                     LASSO con CV de manera estadísticamente significativa
+                     (Diebold--Mariano $p < 10^{-3}$ en todos los pares)."
+            Nuevo:   "El XGBoost mantiene RMSE inferior a los benchmarks
+                     AR(1), AR(24) y LASSO en test 2024 (3,218 vs
+                     3,424/3,427/3,376 €/MWh), pero el test
+                     Diebold-Mariano no alcanza significancia al 5%
+                     con $n = 8\,783$ ($p \in [0,06;\,0,12]$). La
+                     significancia se mantiene únicamente frente a los
+                     benchmarks naïf de persistencia y nivel cero
+                     ($p < 10^{-3}$). La ventaja operativa del modelo
+                     se concentra en la cola de la distribución, no en
+                     el ajuste medio, alineado con su uso en vigilancia."
+
+  L694-700 [MEC parcial] Conclusión 3 "Validación externa modesta pero
+            positiva". Cifras de recall sin cambio (0,833 / 0,75 / +8,3 p.p.).
+            Mantener tal cual, salvo añadir referencia explícita a las
+            métricas Wilson y precision@72h nuevas si se desea.
+
+  L702-705 [NAR] Conclusión 4 "Modelos régimen-específicos".
+            Actual:  "El unificado pooled bate al régime-específico en
+                     pre_crisis y post_excepcion; sólo en
+                     crisis_y_excepcion gana el específico (-1,9% RMSE).
+                     El transfer learning entre regímenes domina en
+                     agregado."
+            Nuevo:   "El régime-específico bate al unificado en
+                     crisis_y_excepcion por margen amplio (-18,1% RMSE),
+                     mientras que en pre_crisis y post_excepcion ambas
+                     especificaciones quedan en empate técnico (<2% RMSE).
+                     La evidencia descarta el dominio agregado del
+                     transfer learning entre regímenes y refuerza la
+                     pertinencia de modelos específicos para periodos
+                     regulatorios no estacionarios."
+
+  L708-716 [TBD] Próximos pasos. Añadir tras (v):
+            "(vi) Recalibración operativa del codo Pareto
+            (z_p99 OOS por régimen + IF_p90 OOS + CUSUM≥1) en el
+            sistema operativo, manteniendo el sistema actual como
+            modo conservador histórico."
+
+================================================================
+RESUMEN
+================================================================
+
+CIFRAS DE REEMPLAZO MECÁNICO TOTAL:  ~35 cifras puntuales
+  (Tabla 1 fila A v3, Tabla 2 fila A v3 + p-values DM, Tabla 3
+   completa, Tabla 4 distribución alertas, Tabla thresholds z,
+   residuos episodios canónicos)
+
+PÁRRAFOS QUE REQUIEREN REESCRITURA NARRATIVA: 6
+  - Abstract (líneas 53-72) — 2 frases reescritas
+  - Lectura Tabla 3 (líneas 287-296) — conclusión metodológica invierte
+  - Lectura Tabla 2 (líneas 332-340) — significancia DM cae
+  - Caveat R² (líneas 342-350) — R² más modesto, refuerza limitación
+  - Conclusión 1 (líneas 683-686) — R² y conteo Rojas
+  - Conclusión 2 (líneas 688-693) — DM ya no domina vs AR/LASSO
+  - Conclusión 4 (líneas 702-705) — invierte hallazgo régime vs unified
+
+SECCIONES NUEVAS / EXPANSIONES (a decidir): 4 bloques
+  - Wilson CI dentro de "Lectura honesta" (línea 591) — opcional pero recomendado
+  - Subsección "Métricas operativas adicionales" tras 591 — precision@72h, lead time
+  - Subsección "Calibración operativa precision/coverage" tras 626 — Tanda 2
+  - Caveat SHAP regeneración pendiente (línea 660-665)
+  - Próximo paso (vi) recalibración Pareto (línea 716)
+
+SECCIONES SIN CAMBIO:
+  - Sec 1 Introducción (líneas 75-117): sin cifras numéricas. SIN CAMBIO.
+  - Sec 2 Datos (líneas 117-148): caveat yfinance ya alineado con A17. SIN CAMBIO.
+  - Sec 2.2 Régimen regulatorio (líneas 149-168): n por régimen y fechas. SIN CAMBIO.
+  - Sec 2.3 Arquitectura sistema y feature eng (líneas 170-208): descriptivo. SIN CAMBIO.
+  - Sec 3.1 cabecera Evaluación expanding-window (líneas 211-228): descriptivo. SIN CAMBIO
+    salvo nota al pie L223-227 sobre identidad step2≡step3 (sigue válida).
+  - Tabla 1 cabecera y caption (líneas 236-250): solo cambia la fila de datos.
+  - Sec 3.4 SHAP (líneas 352-374): ranking cualitativo se mantiene; añadir caveat
+    sobre regeneración pendiente.
+  - Sec 4.1 z-score rolling (líneas 380-388): fórmula sin cambio.
+  - Sec 4.2 Cascada de alertas (líneas 415-440): reglas operativas SIN CAMBIO
+    (las constantes son las mismas; cambian las cifras de los thresholds
+    en tabla L405-410 que ya están en la categoría MEC).
+  - Sec 4.4 Tres episodios (líneas 475-498): narrativa sin cambio salvo
+    los dos residuos puntuales (L481, L486).
+  - Sec 4.5 Validación sistemática (Tablas 5/6/7 líneas 521-580): sin cambio
+    (recall sigue 0,833; CI Wilson y McNemar son adiciones).
+  - Sec 5 Limitaciones — los 6 caveats existentes (líneas 632-672): SIN CAMBIO
+    (añadir caveats nuevos: lead time, calibración, SHAP).
+  - Conclusión 3 (líneas 694-700): SIN CAMBIO (recall 0,833 vs 0,75 se mantiene).
+  - Próximos pasos (i)-(v) (líneas 708-716): SIN CAMBIO (añadir (vi)).
+
+================================================================
+ORDEN SUGERIDO DE REESCRITURA POR BLOQUES
+================================================================
+
+BLOQUE 1 — Tablas y cifras puntuales [MEC]:
+   Tabla 1 (L247), Tabla 2 fila A + DM (L322-325), Tabla 3 completa
+   (L273-282), Tabla 4 (L458-461), Tabla thresholds (L405-410),
+   residuos episodios (L481, L486). 35 cifras, búsqueda y reemplazo.
+
+BLOQUE 2 — Lecturas de tabla y conclusión [NAR]:
+   Lectura Tabla 2 (L332-340), Lectura Tabla 3 (L287-296),
+   Caveat R² (L342-350), Conclusiones 1/2/4 (L683-705).
+   Reescritura de párrafos con narrativa coherente.
+
+BLOQUE 3 — Adiciones nuevas [ADD]:
+   - Wilson CI en lectura honesta (L591)
+   - Subsección métricas operativas (precision@72h, lead time)
+   - Subsección calibración operativa Tanda 2
+   - Caveat SHAP regeneración pendiente
+   - Próximo paso (vi)
+
+BLOQUE 4 — Limitaciones nuevas [ADD]:
+   - Lead time como limitación operativa
+   - Sobre-calibración de cascada actual
+   - SHAP regeneración pendiente
+
+================================================================
+FIN DE INVENTARIO
+================================================================

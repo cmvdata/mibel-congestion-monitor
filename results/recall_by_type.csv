@@ -1,0 +1,7 @@
+event_type,n_total,n_in_window,n_detected,recall,n_naive_detected,recall_naive
+CLIMATICO,5,2,2,1.0,2,1.0
+GEOPOLITICO,1,1,0,0.0,0,0.0
+INFRAESTRUCTURA,6,4,4,1.0,4,1.0
+LABORAL,2,2,2,1.0,2,1.0
+MERCADO,22,13,11,0.8461538461538461,9,0.6923076923076923
+REGULATORIO,4,2,1,0.5,1,0.5

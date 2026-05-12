@@ -1,0 +1,19 @@
+MIBEL Congestion Monitor v3 — Métricas modelo A reentrenado
+================================================================
+Features (26): ['spread_da_lag1h', 'spread_da_lag2h', 'spread_da_lag3h', 'spread_da_lag6h', 'spread_da_lag12h', 'spread_da_lag24h', 'spread_da_lag48h', 'spread_da_lag168h', 'spread_da_ma24h', 'spread_da_ma168h', 'spread_da_std24h', 'ttf_eur_mwh', 'co2_eur_t', 'spark_spread', 'clean_spark_spread', 'ttf_lag24h', 'ttf_lag168h', 'ntc_es_fr', 'ntc_fr_es', 'ntc_is_observed', 'hour', 'dow', 'month', 'is_weekend', 'is_night', 'is_peak']
+
+
+[step1_pre_to_exc]
+  model: {'label': 'A_v3: pre→crisis_exc', 'n': 17494, 'rmse': 5.3817, 'mae': 0.8562, 'r2': 0.3734, 'recall_extreme': 0.6833, 'f1_extreme': 0.6334, 'mae_extreme': 18.696, 'n_extreme': 622}
+  M0: {'label': 'M0', 'n': 17494, 'rmse': 8.3302, 'mae': 1.4871, 'r2': -0.5012, 'recall_extreme': 0.2669, 'f1_extreme': 0.2682, 'mae_extreme': 24.1661, 'n_extreme': 622}
+  M0b: {'label': 'M0b', 'n': 17494, 'rmse': 6.8425, 'mae': 0.9373, 'r2': -0.0129, 'recall_extreme': 0.0, 'f1_extreme': 0.0, 'mae_extreme': 26.2184, 'n_extreme': 622}
+
+[step2_exc_to_post]
+  model: {'label': 'A_v3: exc→post', 'n': 8783, 'rmse': 3.2075, 'mae': 0.6936, 'r2': 0.5418, 'recall_extreme': 0.6456, 'f1_extreme': 0.5753, 'mae_extreme': 9.8681, 'n_extreme': 364}
+  M0: {'label': 'M0', 'n': 8783, 'rmse': 5.7561, 'mae': 1.1659, 'r2': -0.4758, 'recall_extreme': 0.25, 'f1_extreme': 0.248, 'mae_extreme': 15.3444, 'n_extreme': 364}
+  M0b: {'label': 'M0b', 'n': 8783, 'rmse': 4.7561, 'mae': 0.7418, 'r2': -0.0075, 'recall_extreme': 0.0, 'f1_extreme': 0.0, 'mae_extreme': 17.5776, 'n_extreme': 364}
+
+[step3_train2023_test2024]
+  model: {'label': 'A_v3: train2023→test2024', 'n': 8783, 'rmse': 3.2075, 'mae': 0.6936, 'r2': 0.5418, 'recall_extreme': 0.6456, 'f1_extreme': 0.5753, 'mae_extreme': 9.8681, 'n_extreme': 364}
+  M0: {'label': 'M0', 'n': 8783, 'rmse': 5.7561, 'mae': 1.1659, 'r2': -0.4758, 'recall_extreme': 0.25, 'f1_extreme': 0.248, 'mae_extreme': 15.3444, 'n_extreme': 364}
+  M0b: {'label': 'M0b', 'n': 8783, 'rmse': 4.7561, 'mae': 0.7418, 'r2': -0.0075, 'recall_extreme': 0.0, 'f1_extreme': 0.0, 'mae_extreme': 17.5776, 'n_extreme': 364}

@@ -1,0 +1,103 @@
+{
+  "alert_window": {
+    "start": "2022-01-01 00:00:00",
+    "end": "2024-12-31 23:00:00",
+    "n_months": 35.97535934291581
+  },
+  "grid_size": 100,
+  "z_percentiles": [
+    93,
+    95,
+    97,
+    99,
+    99.5
+  ],
+  "if_percentiles": [
+    80,
+    85,
+    90,
+    95,
+    98
+  ],
+  "cusum_min_h": [
+    1,
+    2,
+    3,
+    5
+  ],
+  "canonical_operating_points": {
+    "muy_baja": {
+      "target_alerts_per_month": 3,
+      "actual_alerts_per_month": 2.1403538812785388,
+      "z_percentile": 99.5,
+      "if_percentile": 90.0,
+      "cusum_min_h": 1,
+      "z_thr_crisis": 9.973812306507678,
+      "z_thr_post": 10.0,
+      "if_thr": 0.4197262263376946,
+      "n_alerts": 77,
+      "recall_event": 0.8333333333333334,
+      "precision_72h": 0.18181818181818182,
+      "precision_7d": 0.24675324675324675,
+      "precision_30d": 0.6883116883116883,
+      "fp_rate_per_month_outside_72h": 1.7511986301369864,
+      "median_lag_hours": 427.0
+    },
+    "baja": {
+      "target_alerts_per_month": 5,
+      "actual_alerts_per_month": 4.336301369863014,
+      "z_percentile": 99.0,
+      "if_percentile": 90.0,
+      "cusum_min_h": 1,
+      "z_thr_crisis": 5.742617290921714,
+      "z_thr_post": 6.1080076925593545,
+      "if_thr": 0.4197262263376946,
+      "n_alerts": 156,
+      "recall_event": 0.8333333333333334,
+      "precision_72h": 0.21153846153846154,
+      "precision_7d": 0.2564102564102564,
+      "precision_30d": 0.7435897435897436,
+      "fp_rate_per_month_outside_72h": 3.419006849315069,
+      "median_lag_hours": 368.0
+    },
+    "media": {
+      "target_alerts_per_month": 10,
+      "actual_alerts_per_month": 12.20279680365297,
+      "z_percentile": 97.0,
+      "if_percentile": 80.0,
+      "cusum_min_h": 1,
+      "z_thr_crisis": 1.067329009381242,
+      "z_thr_post": 2.6707328708133535,
+      "if_thr": 0.340800554591596,
+      "n_alerts": 439,
+      "recall_event": 0.8333333333333334,
+      "precision_72h": 0.16856492027334852,
+      "precision_7d": 0.20045558086560364,
+      "precision_30d": 0.7539863325740319,
+      "fp_rate_per_month_outside_72h": 10.145833333333334,
+      "median_lag_hours": 368.0
+    },
+    "alta": {
+      "target_alerts_per_month": 20,
+      "actual_alerts_per_month": 19.735730593607308,
+      "z_percentile": 93.0,
+      "if_percentile": 80.0,
+      "cusum_min_h": 1,
+      "z_thr_crisis": 0.4665553008994832,
+      "z_thr_post": 0.7610574393963029,
+      "if_thr": 0.340800554591596,
+      "n_alerts": 710,
+      "recall_event": 0.8333333333333334,
+      "precision_72h": 0.1676056338028169,
+      "precision_7d": 0.21690140845070421,
+      "precision_30d": 0.7901408450704225,
+      "fp_rate_per_month_outside_72h": 16.42791095890411,
+      "median_lag_hours": 368.0
+    }
+  },
+  "current_system_operating_point": {
+    "alerts_per_month": 20.875399543378997,
+    "n_alerts": 751,
+    "cascade": "current (Verde/Ámbar/Naranja/Roja with regime p99 z, global p95 IF, cusum>=3)"
+  }
+}

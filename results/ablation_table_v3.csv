@@ -1,0 +1,10 @@
+step,spec,label,n,rmse,mae,r2,recall_extreme,f1_extreme,mae_extreme,n_extreme
+step1_pre_to_exc,A_v3_clean,A_v3: pre→crisis_exc,17494,5.3817,0.8562,0.3734,0.6833,0.6334,18.696,622
+step1_pre_to_exc,M0_persistence,M0,17494,8.3302,1.4871,-0.5012,0.2669,0.2682,24.1661,622
+step1_pre_to_exc,M0b_zero,M0b,17494,6.8425,0.9373,-0.0129,0.0,0.0,26.2184,622
+step2_exc_to_post,A_v3_clean,A_v3: exc→post,8783,3.2075,0.6936,0.5418,0.6456,0.5753,9.8681,364
+step2_exc_to_post,M0_persistence,M0,8783,5.7561,1.1659,-0.4758,0.25,0.248,15.3444,364
+step2_exc_to_post,M0b_zero,M0b,8783,4.7561,0.7418,-0.0075,0.0,0.0,17.5776,364
+step3_train2023_test2024,A_v3_clean,A_v3: train2023→test2024,8783,3.2075,0.6936,0.5418,0.6456,0.5753,9.8681,364
+step3_train2023_test2024,M0_persistence,M0,8783,5.7561,1.1659,-0.4758,0.25,0.248,15.3444,364
+step3_train2023_test2024,M0b_zero,M0b,8783,4.7561,0.7418,-0.0075,0.0,0.0,17.5776,364

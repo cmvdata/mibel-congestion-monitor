@@ -1,0 +1,5 @@
+event_id,date_start,date_end,duration_h,event_type,magnitude,direction,out_of_alert_window,system_detected,system_n_amber_or_higher,system_n_orange_or_higher,system_n_red,system_max_abs_z,system_tier_max,system_lag_hours,naive_detected,naive_n_alert_hours,event_name,description_es
+EVT019,2022-02-24,2022-02-24,24,GEOPOLITICO,MUY_ALTA,AUMENTO_PRECIOS_ES_FR,False,False,0,0,0,0.2871497767669049,VERDE,,False,0,EVT019,
+EVT033,2024-01-01,2024-01-01,24,REGULATORIO,ALTA,CONVERGENCIA_SPREAD_ES_FR,False,False,4,0,0,,AMBAR,,False,0,EVT033,
+EVT035,2024-04-01,2024-04-01,24,MERCADO,ALTA,PRECIO_NEGATIVO_ES,False,False,0,0,0,0.2547475166898511,VERDE,,False,0,EVT035,
+EVT036,2024-04-20,2024-04-20,24,MERCADO,ALTA,PRECIO_NEGATIVO_ES,False,False,0,0,0,0.1184541500585632,VERDE,,False,0,EVT036,

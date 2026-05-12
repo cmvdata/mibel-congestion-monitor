@@ -1,0 +1,4 @@
+metric,system_v3,naive_p99_spread
+recall_in_window,0.8333333333333334,0.75
+n_detected,20.0,18.0
+n_total_in_window,24.0,24.0

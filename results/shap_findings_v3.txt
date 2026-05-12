@@ -1,0 +1,14 @@
+MIBEL Congestion Monitor v3 — SHAP findings
+==================================================
+
+Top 10 features por |SHAP| medio:
+  Spread DA lag 1h                  0.6405
+  Spread DA lag 2h                  0.1077
+  Hora                              0.0924
+  Volatilidad 24h                   0.0729
+  Media móvil 24h                   0.0454
+  Spark Spread                      0.0418
+  Spread DA lag 168h                0.0409
+  CO2 EUA                           0.0400
+  Día semana                        0.0332
+  Media móvil 168h                  0.0270
