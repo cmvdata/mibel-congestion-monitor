@@ -269,6 +269,9 @@ def plot_anomalies(df: pd.DataFrame, episodes: pd.DataFrame):
                  fontsize=12, fontweight="bold")
     palette = {"VERDE": "#27AE60", "ÁMBAR": "#F1C40F",
                "NARANJA": "#E67E22", "ROJA": "#C0392B"}
+    # Plot-side English mapping (data values stay in Spanish for downstream scripts)
+    label_en = {"VERDE": "Green", "ÁMBAR": "Amber",
+                "NARANJA": "Orange", "ROJA": "Red"}
 
     ax = axes[0]
     for lvl in ["VERDE", "ÁMBAR", "NARANJA", "ROJA"]:
@@ -276,7 +279,8 @@ def plot_anomalies(df: pd.DataFrame, episodes: pd.DataFrame):
         ax.scatter(df.loc[m, "timestamp"], df.loc[m, "residual"],
                    alpha=0.4 if lvl == "VERDE" else 0.8,
                    s=2 if lvl == "VERDE" else 9,
-                   color=palette[lvl], label=f"{lvl} ({int(m.sum()):,})")
+                   color=palette[lvl],
+                   label=f"{label_en[lvl]} ({int(m.sum()):,})")
     ax.axhline(0, color="black", lw=0.7)
     ax.set_title("Residuals (Model A v3) colored by alert level")
     ax.set_ylabel("Residual (EUR/MWh)")
@@ -314,8 +318,12 @@ def plot_anomalies(df: pd.DataFrame, episodes: pd.DataFrame):
     high["month_year"] = high["timestamp"].dt.to_period("M")
     monthly = high.groupby(["month_year", "alert_level"]).size().unstack(fill_value=0)
     if not monthly.empty:
+        # Rename columns to English for the legend
+        monthly = monthly.rename(columns=label_en)
+        color_en = {label_en[k]: v for k, v in
+                    {"NARANJA": "#E67E22", "ROJA": "#C0392B"}.items()}
         monthly.plot(kind="bar", ax=axes2[0],
-                     color={"NARANJA": "#E67E22", "ROJA": "#C0392B"},
+                     color=color_en,
                      alpha=0.85, width=0.85)
         axes2[0].set_title("Orange / Red alerts per month")
         axes2[0].set_xlabel("")

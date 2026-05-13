@@ -1,0 +1,19 @@
+MIBEL Congestion Monitor v3 — Permutation importance
+============================================================
+
+Test set: 2024-01-01 → 2024-12-31  (n=8,783)
+Baseline RMSE: 3.2308 €/MWh
+n_repeats=30, random_state=42
+
+Top 10 features (global):
+  Spread DA lag 1h                  2.1761  ± 0.0815
+  Hour                              0.3770  ± 0.0717
+  Spark Spread                      0.2406  ± 0.0757
+  Volatility 24h                    0.1876  ± 0.0167
+  Spread DA lag 2h                  0.1109  ± 0.0111
+  Moving avg 168h                   0.0503  ± 0.0206
+  Clean Spark Spread                0.0390  ± 0.0200
+  Moving avg 24h                    0.0362  ± 0.0072
+  TTF lag 168h                      0.0208  ± 0.0047
+  Spread DA lag 48h                 0.0163  ± 0.0019
+

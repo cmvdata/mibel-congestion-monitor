@@ -50,6 +50,7 @@ docs/build/
 
 # Third-party paper PDFs (copyright)
 referencias/
+referencias_nuevas/
 
 # Backup snapshots of results (pre-fix checkpoints)
 results/*_pre_A2real.*
