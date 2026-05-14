@@ -29,6 +29,8 @@
 \usepackage[round, authoryear]{natbib}
 \usepackage{enumitem}
 \usepackage{microtype}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, fit}
 
 \setlist{nosep}
 \sisetup{detect-weight=true, group-separator={\,}}
@@ -217,6 +219,111 @@ The three final regimes are:
 \end{itemize}
 
 \subsection{System architecture and feature engineering}\label{sec:arch}
+
+Figure~\ref{fig:architecture} summarises the end-to-end pipeline.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=0.45cm,
+  data/.style={rectangle, draw, rounded corners=2pt, fill=blue!8,
+               minimum height=0.7cm, minimum width=2.3cm,
+               align=center, font=\footnotesize},
+  feat/.style={rectangle, draw, rounded corners=2pt, fill=cyan!10,
+               minimum height=1.0cm, minimum width=8cm,
+               align=center, font=\footnotesize},
+  model/.style={rectangle, draw, rounded corners=2pt, fill=orange!15,
+                minimum height=0.9cm, minimum width=3.4cm,
+                align=center, font=\footnotesize},
+  detect/.style={rectangle, draw, rounded corners=2pt, fill=green!10,
+                 minimum height=0.7cm, minimum width=2.2cm,
+                 align=center, font=\footnotesize},
+  alert/.style={rectangle, draw, rounded corners=4pt,
+                minimum width=1.7cm, minimum height=0.6cm,
+                font=\footnotesize\bfseries, align=center},
+  out/.style={rectangle, draw, dashed, fill=gray!10,
+              minimum height=0.7cm, minimum width=3cm,
+              align=center, font=\footnotesize},
+  arrow/.style={->, >=stealth, thick}
+]
+
+% Inputs row
+\node[data] (omie) at (-4.5, 4.5) {OMIE prices\\ES, FR};
+\node[data] (jao)  at (-1.5, 4.5) {JAO NTC\\ES$\leftrightarrow$FR};
+\node[data] (ttf)  at ( 1.5, 4.5) {TTF gas,\\CO$_2$ EUA};
+\node[data] (cal)  at ( 4.5, 4.5) {Calendar,\\regime};
+
+% Feature set
+\node[feat] (feats) at (0, 2.8)
+  {\textbf{FEATURES\_A\_CLEAN} (26 features)\\
+   spread lags, rolling stats, fundamentals, NTC, calendar};
+
+\draw[arrow] (omie) -- (feats);
+\draw[arrow] (jao)  -- (feats);
+\draw[arrow] (ttf)  -- (feats);
+\draw[arrow] (cal)  -- (feats);
+
+% Two model heads
+\node[model] (v3) at (-2.5, 1.0) {Model A v3\\XGBoost MSE};
+\node[model] (v4) at ( 2.5, 1.0) {Model A v4\\XGBoost pinball $q=0{,}95$};
+
+\draw[arrow] (feats) -- (v3);
+\draw[arrow] (feats) -- (v4);
+
+% Two outputs
+\node[detect] (res) at (-2.5, -0.5) {Residuals $r_t$};
+\node[out]    (q95) at ( 2.5, -0.5) {$\hat{q}_{0{,}95}(\text{spread})$};
+
+\draw[arrow] (v3) -- (res);
+\draw[arrow] (v4) -- (q95);
+
+% Detection layer (only on residuals)
+\node[detect] (z)     at (-4.6, -2.2) {Rolling\\$z$-score 168h};
+\node[detect] (iso)   at (-2.5, -2.2) {Isolation\\Forest};
+\node[detect] (cusum) at (-0.4, -2.2) {Bilateral\\CUSUM};
+
+\draw[arrow] (res) -- (z);
+\draw[arrow] (res) -- (iso);
+\draw[arrow] (res) -- (cusum);
+
+% Cascade levels
+\node[alert, fill=green!50]  (g) at (-3.6, -3.8) {Verde};
+\node[alert, fill=yellow!60] (a) at (-1.9, -3.8) {Ámbar};
+\node[alert, fill=orange!70] (n) at (-0.2, -3.8) {Naranja};
+\node[alert, fill=red!50]    (r) at ( 1.5, -3.8) {Roja};
+
+\draw[arrow] (z)     -- (g);
+\draw[arrow] (z)     -- (a);
+\draw[arrow] (iso)   -- (a);
+\draw[arrow] (iso)   -- (n);
+\draw[arrow] (cusum) -- (n);
+\draw[arrow] (cusum) -- (r);
+
+% Outputs box
+\node[out] (oper) at (-2.0, -5.4)
+  {Alert registry,\\event-panel validation,\\Pareto calibration};
+\node[out] (econ) at ( 2.5, -5.4)
+  {GW pinball test\\vs AR(1): $p<10^{-3}$\\Kupiec, Christoffersen};
+
+\draw[arrow] (g) -- (oper);
+\draw[arrow] (a) -- (oper);
+\draw[arrow] (n) -- (oper);
+\draw[arrow] (r) -- (oper);
+\draw[arrow] (q95) -- (econ);
+
+\end{tikzpicture}
+\caption{End-to-end system architecture. Open public data sources
+(OMIE, JAO, financial fundamentals) feed a single
+\texttt{FEATURES\_A\_CLEAN} feature set. Two XGBoost specifications
+share the inputs: a mean-error model (A v3) whose residuals drive the
+operational Verde/Ámbar/Naranja/Roja alert cascade via rolling
+$z$-score, IsolationForest and bilateral CUSUM, and a quantile
+companion (A v4) that produces the upper-tail predictions evaluated
+econometrically (Giacomini--White pinball test, Kupiec, Christoffersen).
+The two model heads address two different questions on the same data:
+operational anomaly detection and formal tail-prediction inference.}
+\label{fig:architecture}
+\end{figure}
 
 The system is organised in three sequential phases:
 
@@ -540,6 +647,50 @@ LQRA inputs are conservative point forecasts of the conditional mean
 and the ensemble inherits that conservatism, a known limitation of
 pinball-minimizing ensembles without explicit calibration
 constraints.
+
+\paragraph{Cross-year robustness.} The main results above use a
+single train/test split (2019--2023 training, 2024 testing). To check
+whether the v4-quantile advantage over AR(1) is robust to the choice
+of test year we re-run the pipeline on three rolling-origin folds:
+training 2019--2021 / test 2022, training 2019--2022 / test 2023, and
+the default training 2019--2023 / test 2024. Table~\ref{tab:cv-years}
+reports the result.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Cross-year robustness. RMSE and pinball at $q = 0{,}95$
+across three rolling-origin folds; GW conditional pinball $p$-value
+for v4-quantile vs AR(1).}
+\label{tab:cv-years}
+\begin{tabular}{lrrrrrr}
+\toprule
+\textbf{Test year} & \textbf{RMSE AR(1)} & \textbf{RMSE v4q}
+                  & \textbf{Pinball AR(1)} & \textbf{Pinball v4q}
+                  & \textbf{GW $p$} & \textbf{Winner $q$=0.95} \\
+\midrule
+2022 & \textbf{3.39} & 5.92 & \textbf{0.264} & 0.373 & $3 \cdot 10^{-4}$ & AR(1) \\
+2023 & 4.50 & 5.97 & 0.543 & \textbf{0.476} & $< 10^{-3}$ & v4-quant \\
+2024 & 3.42 & 5.50 & 0.330 & \textbf{0.234} & $< 10^{-3}$ & v4-quant \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The v4-quantile beats AR(1) in pinball at $q = 0{,}95$ in two of
+three folds; the year it fails (2022) coincides with three concurrent
+extreme-regime drivers --- Russian invasion of Ukraine, French-
+nuclear-fleet availability crisis, entry into force of the Iberian
+Exception (15 June 2022). In a year dominated by structural shocks of
+magnitudes outside the 2019--2021 training distribution, short-horizon
+autoregressive persistence outperforms a quantile model fitted on the
+pre-shock regime; the v4-quantile recovers its advantage in 2023
+(regime stabilised) and 2024 (post-Exception). This qualifies the
+headline result: the v4-quantile's tail-prediction advantage holds
+under stable or moderately-shifting regimes but is not robust to
+first-order structural shocks affecting both the level and the
+conditional volatility of the spread simultaneously. Implementation
+in \texttt{scripts/cross\_year\_validation.py}; results in
+\texttt{results/cross\_year\_validation.csv}.
 
 \subsection{Feature importance via permutation}\label{sec:perm-imp}
 
