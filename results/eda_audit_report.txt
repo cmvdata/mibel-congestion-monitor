@@ -1,0 +1,94 @@
+
+========================================================================
+  Dataset shape and timestamp integrity
+========================================================================
+  shape: (52530, 45)
+  timestamp range: 2019-01-02 00:00:00 -> 2024-12-31 23:00:00
+  expected hours (continuous): 52,584
+  observed rows: 52,530
+  duplicate timestamps: 0
+  gaps > 1h: 8 (expected DST and missing hours)
+  top 5 gaps: [Timedelta('1 days 01:00:00'), Timedelta('1 days 01:00:00'), Timedelta('0 days 02:00:00'), Timedelta('0 days 02:00:00'), Timedelta('0 days 02:00:00')]
+
+========================================================================
+  Target spread_da: distribution and outliers
+========================================================================
+  n_non_null: 52,530  (NaN: 0)
+  mean = 0.3744  std = 4.5016
+  min  = -119.1000    max = 122.3900
+  skewness = 11.239    kurtosis = 219.633
+  quantiles: p1=-0.38  p5=0.00  p25=0.00  p50=0.00  p75=0.00  p95=0.00  p99=12.96
+  |spread| > 50 EUR/MWh: 124 obs (0.236%)
+  |spread| > 100 EUR/MWh: 9 obs (0.017%)
+  |spread| > 200 EUR/MWh: 0 obs (0.000%)
+  |spread| > 500 EUR/MWh: 0 obs (0.000%)
+  top 5 |spread| values:
+    2022-08-28 11:00:00  spread=122.39  price_es=180.30  price_fr=57.91
+    2022-11-18 08:00:00  spread=-119.10  price_es=117.90  price_fr=237.00
+    2023-05-01 12:00:00  spread=113.45  price_es=114.95  price_fr=1.50
+    2023-05-01 13:00:00  spread=113.45  price_es=114.95  price_fr=1.50
+    2022-08-28 10:00:00  spread=110.05  price_es=180.30  price_fr=70.25
+
+========================================================================
+  Sign convention check: spread_da == price_es - price_fr?
+========================================================================
+  max |(price_es - price_fr) - spread_da| = 0.000000
+  mean diff = -0.000000
+  -> CONVENTION OK
+
+========================================================================
+  price_es and price_fr: distribution and negatives
+========================================================================
+  price_es: mean=85.58  std=66.27  min=-2.00  max=651.00
+    negative prices: 196 (0.373%)  zero prices: 604
+  price_fr: mean=85.20  std=66.47  min=-2.00  max=700.00
+    negative prices: 247 (0.470%)  zero prices: 649
+
+========================================================================
+  NaN patterns by feature
+========================================================================
+  columns with any NaN: 14
+    ntc_es_fr_lag24h               32,108 NaN (61.12%)
+    ttf_lag168h                       168 NaN ( 0.32%)
+    spread_da_lag168h                 144 NaN ( 0.27%)
+    atc_congestion                     96 NaN ( 0.18%)
+    atc_source                         96 NaN ( 0.18%)
+    atc_fatigue                        96 NaN ( 0.18%)
+    atc_implicit                       96 NaN ( 0.18%)
+    spread_da_ma168h                   48 NaN ( 0.09%)
+    ttf_lag24h                         24 NaN ( 0.05%)
+    spread_da_lag48h                   24 NaN ( 0.05%)
+    price_id_es                         2 NaN ( 0.00%)
+    price_id_fr                         2 NaN ( 0.00%)
+    spread_id                           2 NaN ( 0.00%)
+    spread_da_id                        2 NaN ( 0.00%)
+
+========================================================================
+  Fundamentals sanity: TTF and CO2 outliers
+========================================================================
+  ttf_eur_mwh: range [3.51, 339.20]  mean=46.61  std=47.98  p99=220.96
+  co2_eur_t: range [49.67, 96.42]  mean=67.41  std=11.27  p99=94.10
+
+========================================================================
+  Residuals v3-mean: mean, autocorr, heteroscedasticity
+========================================================================
+  n: 26,277
+  mean = 0.2682    median = -0.0231
+  std  = 4.7591    iqr = 0.0646
+  skewness = 8.203   kurtosis = 154.225
+  one-sample t-test (H0: mean=0): t=9.135  p=0.0000
+    -> RESIDUALS HAVE NON-ZERO MEAN (bias of 0.2682); consider intercept correction
+  autocorr lag 1h: 0.6095
+  autocorr lag 24h: 0.1476
+  autocorr lag 168h: 0.1043
+  Ljung-Box at 24 lags: stat=24640.40  p=0.0000
+    -> RESIDUALS ARE AUTOCORRELATED (model leaves structure)
+  Engle ARCH-LM (24 lags): stat=12008.20  p=0.0000
+    -> RESIDUALS HETEROSCEDASTIC (conditional vol changes over time; expected in EPF)
+
+========================================================================
+  Per-regime breakdown of spread_da
+========================================================================
+  crisis_y_excepcion         n=17,494  mean= +0.77  std= 6.80  p99|abs|=34.63  max|abs|=122.39
+  post_excepcion             n= 8,783  mean= +0.41  std= 4.74  p99|abs|=26.36  max|abs|= 96.77
+  pre_crisis                 n=26,253  mean= +0.10  std= 1.43  p99|abs|= 5.97  max|abs|= 64.87

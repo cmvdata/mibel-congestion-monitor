@@ -692,6 +692,66 @@ conditional volatility of the spread simultaneously. Implementation
 in \texttt{scripts/cross\_year\_validation.py}; results in
 \texttt{results/cross\_year\_validation.csv}.
 
+\subsection{Data audit and residual diagnostics}\label{sec:eda}
+
+A retrospective audit of the master dataset
+(\texttt{scripts/eda\_audit.py},
+\texttt{results/eda\_audit\_report.txt}) confirms the basic
+data-quality conditions and exposes three diagnostic properties of
+the residuals that are material for the interpretation of the
+results.
+
+\paragraph{Sanity checks pass.} The target satisfies
+$\mathrm{spread\_da} = \mathrm{price\_es} - \mathrm{price\_fr}$ to
+numerical precision; no duplicate timestamps; gaps in the hourly
+index correspond to the documented DST transitions; the 9 hours with
+$|\mathrm{spread}| > 100$~€/MWh (out of $52\,530$) are verified
+event-day timestamps (e.g.\ 28 August 2022 morning during the FR
+nuclear-availability trough; 1 May 2023 negative-price episode in
+ES). Negative day-ahead prices in \texttt{price\_es} and
+\texttt{price\_fr} ($0{,}37\%$ and $0{,}47\%$ of observations
+respectively) are real market outcomes during oversupply episodes.
+
+\paragraph{Diagnostic 1: residuals of A v3 have a non-zero mean.}
+On the full 2022--2024 walk-forward residuals
+($n = 26\,277$), the mean is $+0{,}268$~€/MWh
+($t = 9{,}13$, $p < 10^{-3}$ for $H_0:\,\mu = 0$). The point-prediction
+model is systematically biased downward by about a quarter of a
+€/MWh. This bias does not affect the operational alert cascade
+(z-score normalisation absorbs additive shifts), but it does affect
+point-prediction interpretations and is documented here for
+transparency. A simple intercept correction would remove it without
+side effects.
+
+\paragraph{Diagnostic 2: residuals are strongly autocorrelated.}
+The lag-1 autocorrelation of the residuals is $0{,}61$; the
+Ljung--Box test on 24 lags rejects independence with stat
+$= 24\,640{,}40$ ($p < 10^{-3}$). The fundamentals model captures
+most of the level but leaves substantial short-horizon structure in
+the residuals. This is the formal counterpart of the empirical
+finding that AR(1) on the spread is competitive: the residuals
+themselves are autoregressive at hourly granularity. A natural
+extension --- not implemented here --- would be an ARMA correction
+on the residuals or a deep autoregressive component on the target;
+both would reduce RMSE at the cost of additional model complexity.
+
+\paragraph{Diagnostic 3: residuals are heavy-tailed and
+heteroscedastic.} Skewness of the residuals is $8{,}2$, excess
+kurtosis is $154$; the Engle ARCH-LM test on 24 lags rejects
+homoscedasticity with stat $= 12\,008{,}20$ ($p < 10^{-3}$). Two
+methodological consequences follow directly. First, an upper $q
+= 0{,}95$ derived from any model under Gaussian residual assumption
+will under-cover catastrophically; this is the formal explanation
+for the Kupiec failure of the AR(1)-parametric upper bound
+(empirical exceedance $1{,}55\%$ vs nominal $5\%$, see
+Section~\ref{sec:bench-dm}). Second, the régime-specific calibration
+of percentile thresholds in the cascade (Section~\ref{sec:anomalies})
+is justified empirically: the per-regime standard deviation of the
+spread ranges from $1{,}43$~€/MWh (\texttt{pre\_crisis}) to
+$6{,}80$~€/MWh (\texttt{crisis\_y\_excepcion}), a factor of nearly
+five; a single pooled threshold would over-trigger in one regime and
+under-trigger in the other.
+
 \subsection{Feature importance via permutation}\label{sec:perm-imp}
 
 We assess global feature importance with
