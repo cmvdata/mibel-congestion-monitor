@@ -723,17 +723,41 @@ point-prediction interpretations and is documented here for
 transparency. A simple intercept correction would remove it without
 side effects.
 
-\paragraph{Diagnostic 2: residuals are strongly autocorrelated.}
-The lag-1 autocorrelation of the residuals is $0{,}61$; the
-Ljung--Box test on 24 lags rejects independence with stat
-$= 24\,640{,}40$ ($p < 10^{-3}$). The fundamentals model captures
-most of the level but leaves substantial short-horizon structure in
-the residuals. This is the formal counterpart of the empirical
-finding that AR(1) on the spread is competitive: the residuals
-themselves are autoregressive at hourly granularity. A natural
-extension --- not implemented here --- would be an ARMA correction
-on the residuals or a deep autoregressive component on the target;
-both would reduce RMSE at the cost of additional model complexity.
+\paragraph{Diagnostic 2: residual autocorrelation is a
+walk-forward concatenation artefact, not a model misspecification.}
+On the concatenated walk-forward residuals
+(\texttt{residuals\_v3.parquet}, three folds stitched together) the
+lag-1 autocorrelation is $0{,}61$ and Ljung--Box on 24 lags rejects
+independence ($p < 10^{-3}$). However, this is not evidence that the
+fundamentals model is misspecified. When a single XGBoost is trained
+on 2019--2023 and its in-sample residuals are evaluated, the lag-1
+autocorrelation is only $-0{,}08$ and an AR$(p)$ fit selects very
+small coefficients (best AIC at $p = 6$ with $\rho_1 = -0{,}08$,
+remaining $|\rho_k| < 0{,}07$). The high autocorrelation reported
+above arises from the concatenation of residuals from three
+separately trained models with different parameter estimates and
+implicitly different intercepts; the discontinuities at the fold
+boundaries inflate the apparent serial correlation of the joined
+series. To verify this empirically, we applied an AR(6) correction
+to the test-set predictions (fit on the training residuals of a
+single 2019--2023 XGBoost):
+
+\[
+\hat{y}_t^{\text{corrected}} = \hat{y}_t^{(v3)} + \mu + \sum_{k=1}^{6}
+\rho_k\,\big(y_{t-k} - \hat{y}_{t-k}^{(v3)}\big).
+\]
+
+The correction \emph{deteriorates} performance: test-set RMSE rises
+from $3{,}411$ to $3{,}580$~€/MWh, with the Diebold--Mariano test
+rejecting equality at $p = 0{,}0001$ in favour of the uncorrected
+baseline. Test residual autocorrelation also worsens
+($0{,}28 \to 0{,}39$). The natural reading is that within each
+walk-forward fold the XGBoost adequately captures the autoregressive
+structure available in the feature lags; an exogenous AR correction
+fitted on training residuals does not generalise to the test fold
+because the residual structure is itself non-stationary across folds.
+Implementation in \texttt{scripts/arma\_correction.py}; results in
+\texttt{results/arma\_correction\_results.csv}.
 
 \paragraph{Diagnostic 3: residuals are heavy-tailed and
 heteroscedastic.} Skewness of the residuals is $8{,}2$, excess
