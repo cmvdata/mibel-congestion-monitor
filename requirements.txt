@@ -28,3 +28,8 @@ seaborn==0.13.2
 
 # Misc
 tqdm==4.67.3
+
+# Dashboard (app/dashboard.py)
+streamlit>=1.40
+plotly>=5.20
+pymupdf>=1.24
