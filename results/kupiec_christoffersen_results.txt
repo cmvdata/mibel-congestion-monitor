@@ -1,0 +1,78 @@
+Kupiec + Christoffersen calibration tests
+Model: A v4 (XGBoost quantile, alpha=0.95)
+Test set: 2024 (n=8783)
+Empirical exceedance rate: 5.579%  (nominal 5.00%, expected 439)
+
+
+[Kupiec_unconditional_coverage]
+  n: 8783
+  exceedances_observed: 490
+  exceedances_expected: 439.1500000000004
+  rate_observed: 0.0557895935329614
+  rate_nominal: 0.050000000000000044
+  LR_stat: 5.983590796983663
+  df: 1
+  p_value: 0.014439574601619931
+  reject_5pct: True
+  interpretation: reject H0: coverage rate differs from nominal alpha
+
+[Christoffersen_independence]
+  n_00: 8028
+  n_01: 264
+  n_10: 264
+  n_11: 226
+  pi_01: 0.03183791606367583
+  pi_11: 0.46122448979591835
+  pi_marginal: 0.055795946253700754
+  LR_stat: 764.5639090498107
+  df: 1
+  p_value: 0.0
+  reject_5pct: True
+  interpretation: reject H0: exceedances cluster (NOT independent)
+
+[Christoffersen_conditional_coverage]
+  LR_uc: 5.983590796983663
+  LR_ind: 764.5639090498107
+  LR_cc: 770.5474998467944
+  df: 2
+  p_value: 0.0
+  reject_5pct: True
+  interpretation: reject H0: coverage incorrect OR exceedances cluster
+
+
+--- Auxiliary: AR(1) parametric q=0.95 ---
+
+[Kupiec_unconditional_coverage]
+  n: 8783
+  exceedances_observed: 136
+  exceedances_expected: 439.1500000000004
+  rate_observed: 0.015484458613230103
+  rate_nominal: 0.050000000000000044
+  LR_stat: 298.3484398987871
+  df: 1
+  p_value: 0.0
+  reject_5pct: True
+  interpretation: reject H0: coverage rate differs from nominal alpha
+
+[Christoffersen_independence]
+  n_00: 8551
+  n_01: 95
+  n_10: 95
+  n_11: 41
+  pi_01: 0.010987739995373584
+  pi_11: 0.3014705882352941
+  pi_marginal: 0.015486221817353677
+  LR_stat: 190.99554520305196
+  df: 1
+  p_value: 0.0
+  reject_5pct: True
+  interpretation: reject H0: exceedances cluster (NOT independent)
+
+[Christoffersen_conditional_coverage]
+  LR_uc: 298.3484398987871
+  LR_ind: 190.99554520305196
+  LR_cc: 489.34398510183905
+  df: 2
+  p_value: 0.0
+  reject_5pct: True
+  interpretation: reject H0: coverage incorrect OR exceedances cluster

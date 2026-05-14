@@ -425,34 +425,24 @@ M0b (zero)   & 4{,}756 & $-0{,}008$ & 0{,}000 & [3{,}768, 5{,}800] & $+3{,}38$ &
 \end{tabular}
 \end{table}
 
-\paragraph{Reading.} Model A v3 achieves lower RMSE than all five
-benchmarks on the 2024 test set, but the statistical significance of
-the gap (Diebold--Mariano, $h=1$, $n = 8\,783$) varies with the
-benchmark: against the naive benchmarks (persistence, zero level) the
-improvement is highly significant ($p < 10^{-3}$); against the
-competitive benchmarks AR(1), AR(24) and LASSO the positive DM
-statistic does not reach 5\% significance ($p \in [0{,}06;\,0{,}12]$).
-The RMSE margin (Model A v3 = 3{,}218 vs LASSO = 3{,}376,
-AR(1) = 3{,}424) is preserved in favour of Model A, but the formal
-evidence in the tail of the distribution requires a larger $n$ to
-conclude at 5\% significance. AR(1) shows a marginally lower MAE
-(0{,}652 vs 0{,}684), consistent with a model that minimises mean
-deviations rather than tail deviations; Model A's advantage
-concentrates in the magnitude regime relevant for surveillance, not
-in the average fit.
-
-\paragraph{Caveat on $R^2$.} The $R^2 = 0{,}539$ is notably modest
-compared to the typical values in the electricity-price-forecasting
-literature, which report $R^2 > 0{,}85$ for AR/SARIMA + fundamentals
-in markets such as EPEX or PJM \citep{Weron2014}. The gap is
-explained by the structurally noisier intra-day behaviour of the
-bilateral ES--FR spread relative to a single zonal price, especially
-in regimes of partial market coupling. An $R^2$ of order $0{,}5$ lies
-on the lower side of the range reported for spreads in
-\citet{Bunn2016}. We report this limitation without ornamentation.
-The model's value materialises in the tail of the distribution
-(extreme residuals), not in the average fit: $R^2$ is not the
-relevant metric for the surveillance use case.
+\paragraph{Reading.} On squared-error loss, Model A v3 achieves lower
+RMSE than the five benchmarks ($3{,}218$~€/MWh vs
+$3{,}376$--$5{,}756$), but the Diebold--Mariano test against the
+competitive benchmarks AR(1), AR(24) and LASSO does not reach 5\%
+significance ($p \in [0{,}06;\,0{,}12]$); significance is maintained
+only against the naive benchmarks of persistence and zero level
+($p < 10^{-3}$). This non-significance is not a defect of the model
+but a metric-specification consequence: when the relevant loss for
+the surveillance use case is asymmetric and concentrated on the upper
+tail, squared-error loss is not the right testing instrument. The
+Giacomini--White test under pinball loss at $q = 0{,}95$ (next
+paragraph) addresses this directly. $R^2 = 0{,}539$ is below the
+$> 0{,}85$ typical of single zonal-price forecasts
+\citep{Weron2014} but in line with the lower side of the range
+reported for bilateral spreads \citep{Bunn2016}; the bilateral
+differencing cancels most of the common-factor variance that drives
+high $R^2$ in single-price models. $R^2$ is not the relevant metric
+here, but is reported without ornamentation for comparability.
 
 \paragraph{Quantile companion model and the Giacomini--White
 pinball test.} The pinball loss at $q = 0{,}95$ of Model A v3 on
@@ -486,6 +476,70 @@ provides the formal evidence that fundamentals carry tail
 information beyond pure autoregression when the model is matched to
 the metric. Implementation is in \texttt{scripts/train\_model\_v4\_
 quantile\_clean.py} and \texttt{scripts/apply\_gw\_to\_residuals.py}.
+
+\paragraph{Calibration of v4-quantile via Kupiec and Christoffersen
+tests.} Beyond mean pinball loss, we evaluate the calibration of the
+$q = 0{,}95$ quantile predictions following the
+``sharpness subject to reliability'' paradigm
+\citep{NowotarskiWeron2018}. The empirical exceedance rate on the
+$8\,783$-hour test set is $5{,}58\%$ against a nominal $5\%$
+(490 exceedances vs 439 expected). The Kupiec (1995)
+unconditional-coverage likelihood-ratio test rejects equality at
+the 5\% level (LR$_{\text{uc}} = 5{,}98$, $p = 0{,}014$), but the
+deviation is small in absolute magnitude ($+0{,}58$ percentage
+points). By contrast, a parametric upper $q = 0{,}95$ derived from
+AR(1) under Gaussian residual assumption produces $1{,}55\%$
+empirical exceedance (LR$_{\text{uc}} = 298{,}3$, $p < 10^{-3}$), a
+catastrophic under-coverage by a factor of three driven by the
+heavy-tailed nature of the residual distribution that normality
+fails to capture. The Christoffersen (1998) independence test rejects
+in both cases (LR$_{\text{ind}} = 764{,}6$ for v4-quantile, $190{,}9$
+for AR(1)-parametric): exceedances cluster in time, consistent with
+the known persistence of congestion episodes in electricity-spread
+series. The joint conditional-coverage test is therefore rejected
+for both specifications. The reading is methodological: v4-quantile
+is approximately but not exactly calibrated and inherits the
+clustering that any single-state model would inherit on this series;
+the parametric Gaussian alternative does not even achieve approximate
+coverage. Implementation in
+\texttt{scripts/kupiec\_christoffersen\_test.py}; results in
+\texttt{results/kupiec\_christoffersen\_results.txt}.
+
+\paragraph{LASSO-Regularized Quantile Regression Averaging (LQRA).}
+Following \citet{UniejewskiWeron2021} we evaluate whether combining
+multiple point forecasts via $L_1$-regularized quantile regression
+improves over the best single-model forecast. The five inputs are the
+point predictions of v3-mean (XGBoost MSE), AR(1), AR(24), LASSO and
+the decomposed forecast (XGBoost on \texttt{price\_es} minus XGBoost
+on \texttt{price\_fr}). For each target quantile $q$, a separate
+\texttt{QuantileRegressor} with $L_1$ penalty is fit on the first
+half of the 2024 test set and evaluated on the second half; the
+regularization strength is selected by minimizing pinball loss on a
+20\% inner hold-out of the training half. Results
+(\texttt{results/lqra\_results.csv}) show that LQRA reduces pinball
+loss against the best single forecast at
+$q \in \{0{,}05;\,0{,}25;\,0{,}50;\,0{,}95\}$ and ties marginally at
+$q = 0{,}75$; the pinball gain at $q = 0{,}95$ is $-0{,}018$ (LQRA
+$= 0{,}304$ vs best single AR(1) $= 0{,}322$). The
+LASSO-selected coefficients (\texttt{results/lqra\_coefficients.csv})
+expose the regime-dependent informativeness of each predictor: at the
+bulk quantiles ($q = 0{,}25,\,0{,}50,\,0{,}75$) only AR(1) survives
+the $L_1$ penalty with coefficient $0{,}45$--$0{,}88$, while at
+$q = 0{,}95$ the full ensemble is active (v3-mean $= 0{,}38$,
+AR(1) $= 0{,}34$, LASSO $= 0{,}37$, decomposed $= 0{,}15$,
+AR(24) $= -0{,}12$). This is informative: the bulk of the spread
+distribution is dominated by autoregressive persistence; the upper
+tail requires fundamentals to be discriminated. LQRA's $q = 0{,}95$
+pinball ($0{,}30$) is, however, worse than the dedicated v4-quantile
+model applied at the same quantile on the full 2024 test ($0{,}27$):
+a non-linear, quantile-loss-optimized XGBoost remains preferable for
+a specific tail quantile, but LQRA provides a coherent
+probabilistic-forecast framework when the full predictive
+distribution is needed. Coverage is universally below nominal --- the
+LQRA inputs are conservative point forecasts of the conditional mean
+and the ensemble inherits that conservatism, a known limitation of
+pinball-minimizing ensembles without explicit calibration
+constraints.
 
 \subsection{Feature importance via permutation}\label{sec:perm-imp}
 
@@ -1026,6 +1080,91 @@ of a 40\% higher false-positive rate ($24{,}8$ vs $17{,}8$
 alerts/month). This configuration (V4b\_p2 in the ablation) is the
 recommended operational Pareto point for deployments that prioritise
 shorter lead time over alert precision.
+
+\paragraph{Extensions tested without improvement.} Two
+methodologically natural extensions were implemented and rejected on
+empirical grounds. We document them so that subsequent work does not
+re-invest effort on the same paths.
+
+\emph{(i) Day-ahead renewable forecasts as features.} We integrated
+the four publicly available D-1 renewable forecasts (ES wind and
+solar from ESIOS indicators 541 and 542; FR wind and solar from RTE
+OpenData \texttt{production\_forecast}), giving $30$ features instead
+of $26$. Although the four new features appear in the top 12 of the
+v3-mean permutation-importance ranking (\texttt{fr\_solar\_fc} at
+position 5, \texttt{es\_solar\_fc} at 12 in the augmented run), they
+do not improve out-of-sample RMSE. The Diebold--Mariano test on
+squared-error loss between v3-mean with and without renewables yields
+LR statistic $= -3{,}83$ ($p = 0{,}0001$) \emph{in favour of the
+specification without renewables}, with mean squared-error
+differential $-2{,}11$. Pinball loss at $q = 0{,}95$ is unchanged
+($0{,}450$ vs $0{,}438$). Interpretation: the existing
+\texttt{FEATURES\_A\_CLEAN} set --- spread lags, rolling statistics
+and shared fundamentals --- already encodes the predictive
+information that day-ahead renewable forecasts would contribute. The
+result is consistent with the day-ahead auction having already
+internalized those forecasts at the moment of price discovery. Full
+results in \texttt{results/renewables\_ablation.csv}; merged dataset
+in \texttt{data/processed/mibel\_dataset\_20190101\_20241231\_v4.parquet}.
+
+\emph{(ii) Decomposed forecasting.} Following \citet{Lago2021}, we
+implemented a decomposed specification with two separate XGBoost
+models targeting \texttt{price\_es} and \texttt{price\_fr}
+respectively, both with own-price lags and shared fundamentals, and
+combined the predictions as $\hat{p}_{\text{spread}} =
+\hat{p}_{\text{ES}} - \hat{p}_{\text{FR}}$. The intuition is that
+each component model can exploit its full price-level signal rather
+than the differenced quantity. Empirically the result is the
+opposite: decomposed forecasting yields RMSE $= 3{,}77$~€/MWh against
+$3{,}41$ for direct, with Diebold--Mariano LR $= +2{,}84$
+($p = 0{,}0045$) in favour of direct; pinball loss at $q = 0{,}95$
+is $0{,}93$ vs $0{,}44$. The component models each have substantial
+residual variance ($\mathrm{RMSE}_{\text{ES}} = 3{,}99$,
+$\mathrm{RMSE}_{\text{FR}} = 5{,}47$); subtraction does not cancel
+errors enough to beat a model trained directly on the lower-variance
+target. The direct model implicitly learns which factors matter for
+the difference and does not waste capacity modelling common
+components that cancel by construction. Implementation in
+\texttt{scripts/train\_decomposed\_es\_fr.py}; results in
+\texttt{results/decomposed\_vs\_direct.csv}.
+
+\emph{(iii) Nuclear availability and demand forecasts.} We added
+three further structural features --- French aggregated nuclear
+availability (RTE \texttt{eco2mix} realized generation lagged 24~h to
+avoid leakage), Spanish day-ahead demand forecast (ESIOS indicator
+460) and French day-ahead demand forecast (RTE \texttt{prevision\_j1})
+--- and re-trained both v3-mean and v4-quantile on the
+$29$- and $33$-feature variants. None of the augmented configurations
+improves the baseline on the common 2024 test set (Table~X in
+\texttt{results/v5\_features\_comparison.csv}). For v3-mean, RMSE
+deteriorates from $3{,}42$ to $3{,}53$ (BASE+ND) and to $3{,}79$
+(BASE+ALL); the Diebold--Mariano test on squared-error loss favours
+BASE in both cases ($p = 0{,}12$ and $p < 10^{-3}$ respectively).
+For v4-quantile, pinball loss at $q = 0{,}95$ deteriorates from
+$0{,}232$ (BASE) to $0{,}276$ (BASE+ND) and $0{,}265$ (BASE+ALL); the
+Giacomini--White conditional test rejects equality with
+$p \leq 10^{-3}$ in favour of BASE in both cases. The nuclear and
+demand features do appear in the top 12 of permutation importance
+(\texttt{es\_demand\_fc} at position 9 in BASE+ALL), so the model
+does use them; but the marginal information they contribute is
+overwhelmed by the cost of the additional dimensions. The pattern is
+the same as for renewables: the day-ahead spread already integrates
+demand and supply expectations at the moment of market clearing, and
+lagged exogenous forecasts at hourly resolution add no detectable
+predictive signal beyond the spread's own short-horizon lags.
+Implementation in \texttt{scripts/compare\_v5\_features.py}; merged
+dataset in
+\texttt{data/processed/mibel\_dataset\_20190101\_20241231\_v5.parquet}.
+
+The cumulative empirical reading across (i)--(iii) is that the
+$26$-feature \texttt{FEATURES\_A\_CLEAN} baseline sits at the
+informational frontier achievable with publicly available day-ahead
+data at hourly resolution. Methodologically natural extensions
+(decomposed forecasting, additional structural features) were
+implemented and rejected. Further marginal gains would likely
+require either intraday transactional data (XBID order book) or
+sub-daily granularity that is outside the open-data scope of this
+work.
 
 \paragraph{REMIT II positioning revisited.} The $180$~h median lag
 of the Orange-level cascade is \emph{compliant} with REMIT~II by
