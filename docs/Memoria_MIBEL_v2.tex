@@ -1260,13 +1260,20 @@ performance commensurate with this ceiling.
 \end{quote}
 
 Three implications follow. First, further marginal gains on
-\emph{ex-ante} prediction with these data are unlikely; the
-operational system is at the empirical frontier. Second, real
-improvement requires data not available at hourly DA granularity:
-intraday OMIE forecasts and clearing, REE/RTE physical flows
-(rather than published NTC), and XBID transactional data --- all of
-which are partly public but require additional integration work or
-operator agreements. Third, the surveillance positioning of the
+\emph{ex-ante} prediction with the features integrated here are
+unlikely; the operational system is at the empirical frontier of the
+day-ahead schedule information set. Second, the gap to a higher
+ceiling is one of \emph{integration of additional public data}
+rather than of regulatory access. Specifically: intraday OMIE
+auction prices and volumes (sessions MI1--MI6) are public via the
+OMIE web archive; physical realised flows ES$\leftrightarrow$FR are
+public via ESIOS indicators and RTE OpenData; cross-border A11
+flows are public via ENTSO-E Transparency Platform with a free
+research token. The only genuinely access-restricted dataset that
+would meaningfully change the ceiling is the order-by-order
+transactional record on the XBID continuous market, which is
+protected by REMIT II reporting rules and available only to ACER
+and national regulators. Third, the surveillance positioning of the
 system is unchanged: the cascade is a screening filter compatible
 with REMIT II Article 15(1)/15(2), where the four-week notification
 clock starts at awareness (not at occurrence) and §457
@@ -1337,23 +1344,55 @@ $p = 0.014$).
 \end{enumerate}
 
 \paragraph{Data requirements for a successor system.}
-A genuine improvement on the empirical ceiling requires inputs
-that the current DA-only feature set cannot reach:
+A genuine improvement on the empirical ceiling depends on
+integrating additional data sources. We distinguish between
+data that is public but not yet integrated in this work, and data
+that is genuinely access-restricted under REMIT II.
 
+\textit{Public but not yet integrated:}
 \begin{itemize}
-\item \textbf{Intraday OMIE} sessions and clearing (partially
-public via OMIE API; integration not trivial).
-\item \textbf{Physical flows} on the ES--FR interconnection from
-REE and RTE operational feeds, rather than the NTC values
-published by JAO.
-\item \textbf{REMIT transactional reports} at the order-by-order
-level (XBID for the European intraday continuous market) ---
-required for a Tier-3 ACER surveillance tool, not available with
-open-data access.
-\item \textbf{Sub-hourly granularity} (15-minute resolution) for
-the MIBEL market post-2025, which will require migration of the
-entire pipeline.
+\item \textbf{OMIE intraday auction sessions MI1--MI6} (price and
+volume per delivery hour, published per session). Available via
+the OMIE web archive in CSV form; integration requires a parser
+of the daily session files.
+\item \textbf{Realised physical flows ES$\leftrightarrow$FR}.
+Available via ESIOS indicators (REE side, accessible with the same
+token already used for the day-ahead schedule) and via RTE
+OpenData (FR side). Combined they give the realised bilateral flow
+that can be used as a lag-24h feature without leakage.
+\item \textbf{ENTSO-E Transparency A11 (cross-border physical flow)
+and A09 (scheduled commercial exchange)}. Public, but require a
+separate research token from ENTSO-E (free; granted typically
+within 1--3 working days after a registered request).
+\item \textbf{Generation per production type (A75 ENTSO-E) for both
+ES and FR}. Same access conditions as A11.
+\item \textbf{Sub-hourly (15-minute) data} for the MIBEL market
+post-2025. Public but requires migrating the entire pipeline to
+quarter-hourly resolution.
 \end{itemize}
+
+\textit{Access-restricted under REMIT II:}
+\begin{itemize}
+\item \textbf{Order-by-order XBID transactional record}.
+Order-level data for the European intraday continuous market is
+collected by ACER under REMIT II and shared only with national
+regulatory authorities. This is the one dataset that a fully
+Tier-3 surveillance system would require and that open-data
+research cannot access. Aggregate XBID prices and volumes by hour
+are public via the participating operators.
+\item \textbf{Inside-information notifications and STORs}
+(Suspicious Transaction and Order Reports) submitted by PPAETs
+under Article 15(3) of REMIT II. Confidential between the
+notifier, ACER and the relevant NRA.
+\end{itemize}
+
+The empirical claim of §\ref{sec:ceiling} therefore qualifies as
+follows: with the feature set integrated in this work, the ceiling
+is AUC-ROC $\approx 0.88$. The unexplored question is whether the
+public data listed above (especially realised intraday flows and
+A11) carries additional incremental signal beyond the day-ahead
+schedule already tested. That question is testable with the open
+data; it is left as the natural next step for a successor system.
 
 \paragraph{Pareto-elbow recommendation.} For deployments under the
 current data scope we recommend the elbow operating point of
