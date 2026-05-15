@@ -499,6 +499,16 @@ estimated regime-specific values for the test period
 $p_{99}^{\text{post\_excepcion}} = 6.12$,
 $p_{99}^{\text{crisis\_y\_excepcion}} = 5.74$.
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{06_anomaly_detection_v3.png}
+\caption{Anomaly detection on the residuals of Model A v3
+(2022--2024). Top: residuals colored by alert level. Middle:
+rolling $|z|$ with Red-alert markers. Bottom: bilateral CUSUM
+persistence.}
+\label{fig:anomaly-detection}
+\end{figure}
+
 % =====================================================================
 \section{Econometric evaluation}\label{sec:econometrics}
 % =====================================================================
@@ -803,6 +813,15 @@ across correlated clusters; the figures should therefore be read at
 cluster granularity (lags, fuel costs, capacity, calendar) rather
 than feature-by-feature.
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{permutation_importance_boxplot.png}
+\caption{Distribution of permutation importance for the top-10
+features over 30 repetitions. Narrow boxes indicate stable
+attribution; wider boxes indicate noisier feature contribution.}
+\label{fig:perm-boxplot}
+\end{figure}
+
 % =====================================================================
 \section{Operational validation}\label{sec:operational}
 % =====================================================================
@@ -900,6 +919,24 @@ the day-ahead nature of the market (daily auction) and the
 structural duration of detected episodes (heat waves, regulatory
 shocks, and generation restrictions develop over days or weeks).
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{event_validation.png}
+\caption{Systematic validation against the pre-specified 40-event
+panel. Top: detection coverage by event magnitude; bottom: detection
+lag distribution for in-window detected events.}
+\label{fig:event-validation}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{07_alert_concentration_v3.png}
+\caption{Monthly Orange and Red alerts (left) and top-10 episodes
+ranked by maximum residual magnitude (right) on the 2022--2024
+period.}
+\label{fig:alert-concentration}
+\end{figure}
+
 \subsection{Pareto calibration}\label{sec:pareto}
 
 Beyond a single fixed operating point, the cascade admits
@@ -940,6 +977,17 @@ precision@72h $= 0.148$) is dominated by the elbow configuration
 times lower alert volume and 43\% higher precision. A CNMC or ACER
 analyst with about 2 hours per week of dedicated review capacity
 could process the elbow without coverage loss.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{10_operational_calibration_pareto.png}
+\caption{Pareto frontier of precision@72h vs alert volume across
+100 threshold combinations. Lines correspond to different CUSUM
+persistence thresholds (1, 2, 3, 5 hours). The system's current
+operating point (red X) lies above the elbow; the canonical capacity
+points (Very low, Low/elbow, Medium, High) are labelled.}
+\label{fig:pareto}
+\end{figure}
 
 % =====================================================================
 \section{Empirical limits of ex-ante prediction}\label{sec:limits}
