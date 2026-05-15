@@ -1,0 +1,44 @@
+{
+  "target_threshold_eur_mwh": 0.5,
+  "n_features": 18,
+  "features": [
+    "hour_sin",
+    "hour_cos",
+    "dow_sin",
+    "dow_cos",
+    "mon_sin",
+    "mon_cos",
+    "holiday_es",
+    "holiday_fr",
+    "holiday_xor",
+    "ntc_es_fr",
+    "ntc_fr_es",
+    "ntc_is_observed",
+    "state_lag24",
+    "state_lag168",
+    "run_length_prev",
+    "reg_pre_crisis",
+    "reg_crisis_y_excepcion",
+    "reg_post_excepcion"
+  ],
+  "overall_decoupled_rate": 0.03910146582905007,
+  "logistic": {
+    "auc_roc": 0.7842525089506001,
+    "auc_pr": 0.22069400974917353,
+    "brier": 0.23106187553580593,
+    "n_transitions": 171,
+    "median_lead_h": 48.0,
+    "mean_lead_h": 40.473684210526315,
+    "frac_predicted_in_advance": 0.9473684210526315
+  },
+  "lightgbm": {
+    "auc_roc": 0.8560693151432759,
+    "auc_pr": 0.3566763318774489,
+    "brier": 0.05296505388719997,
+    "n_transitions": 171,
+    "median_lead_h": 26.0,
+    "mean_lead_h": 25.88888888888889,
+    "frac_predicted_in_advance": 0.7543859649122807
+  },
+  "H1_confirmed_by_logistic": false
+}
