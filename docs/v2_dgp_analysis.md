@@ -206,6 +206,30 @@ Dado que H1 falla con un techo de AUC $\sim$ 0.87, y siguiendo el plan pre-regis
 - Calibración (Brier score) y estabilidad temporal de las matrices de transición aprendidas.
 - Interpretabilidad: las medias de emisión por estado deberían tener una historia física razonable (ej. estado "tensionado" debería corresponder a NTC bajo + alta penetración renovable asimétrica).
 
+### 7.2.1 Resultado de H2 (resuelto)
+
+H2 **falsada empíricamente y por margen amplio**. Resultados en `results/v2_stage_a_hmm_metrics.json`:
+
+| Modelo | AUC-ROC | AUC-PR | Brier |
+|---|---:|---:|---:|
+| LightGBM rich (33 features, baseline a batir) | 0.868 | 0.382 | 0.046 |
+| **Gaussian HMM 3 estados (23 features continuas)** | **0.600** | **0.076** | **0.376** |
+| Delta (HMM − GBM) | **−0.27** | **−0.31** | peor |
+
+El HMM identifica correctamente el "estado desacoplado" en 52/52 semanas (verificación post-hoc), por lo que el problema no es de mapeo sino de capacidad predictiva del modelo. Hay algunos warnings de no-convergencia EM en ciertas semanas (decay de log-likelihood en iteraciones tardías), consistentes con que la distribución conjunta de las features no es bien aproximada por una mezcla gaussiana de 3 componentes — varias features están bounded (sin/cos), categóricas (`ntc_is_observed`) o presentan saltos discretos (`ntc_es_fr` en la transición JAO/implícito).
+
+### 7.2.2 Conclusión científica de Stage A v2
+
+Con H1 y H2 ambas falsadas con pre-registro, la conclusión empírica es robusta:
+
+> La predicción ex-ante de la congestión binaria ES-FR ($|spread| > 0{,}5$~€/MWh) desde features observables a granularidad horaria de mercado day-ahead tiene un techo empírico de **AUC-ROC $\approx 0{,}87$** (LightGBM con 33 features físicas incluyendo renovables, demand y nuclear). El ruido de transición $0 \to 1$ es **estocástico residual**, no estado oculto separable por HMM con distribuciones gaussianas multivariadas. La persistencia del estado observado (`run_length_prev`) es el predictor dominante por margen amplio sobre cualquier driver físico.
+
+Implicaciones:
+
+1. **El paper v1 que reporta el cascade Verde/Ámbar/Naranja/Roja con AUC implícita comparable no era mediocre — era el rendimiento alcanzable con esos datos.** La cascada construida sobre residuos del v3-mean reproducía indirectamente la persistencia que aquí emerge como predictor dominante.
+2. **Mejoras de Stage A sustanciales requieren datos no disponibles públicamente a granularidad hourly DA**: flujos físicos REE/RTE en tiempo intra-mercado, datos transaccionales XBID, o resoluciones sub-horarias del mercado intradiario.
+3. **El two-stage hurdle como arquitectura sigue siendo válido conceptualmente**, pero su Stage A no será mejor que AUC ~0.87 con los datos abiertos disponibles. Si se procede a Stage B, hay que diseñarlo asumiendo que Stage A es un filtro imperfecto, no un oráculo binario.
+
 ### 7.3 Métrica de éxito para Stage B (condicional a H1 o H2 confirmadas)
 
 Pinball loss q=0.95 dentro del modo desacoplado $< 0.5 \times$ pinball loss del v4-quantile actual aplicado al mismo subset. Es decir, el regresor condicional debe ser al menos el doble de preciso que el modelo no condicional dentro de la región de interés.

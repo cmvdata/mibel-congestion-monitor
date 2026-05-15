@@ -1,0 +1,42 @@
+{
+  "n_states": 3,
+  "n_features": 23,
+  "features": [
+    "hour_sin",
+    "hour_cos",
+    "dow_sin",
+    "dow_cos",
+    "mon_sin",
+    "mon_cos",
+    "ntc_es_fr",
+    "ntc_fr_es",
+    "es_solar_fc",
+    "es_wind_fc",
+    "fr_solar_fc",
+    "fr_wind_fc",
+    "es_demand_fc",
+    "fr_demand_fc",
+    "fr_nuclear_avail",
+    "solar_pen_es",
+    "solar_pen_fr",
+    "solar_pen_asym",
+    "wind_pen_es",
+    "wind_pen_fr",
+    "wind_pen_asym",
+    "demand_log_ratio",
+    "nuclear_ratio_fr"
+  ],
+  "positive_rate": 0.03910146582905007,
+  "auc_roc": 0.6002394664771273,
+  "auc_pr": 0.0755010456423494,
+  "brier": 0.37598338652555546,
+  "lead_time": {
+    "n_transitions": 171,
+    "median_lead_h": 48.0,
+    "mean_lead_h": 40.345029239766085,
+    "frac_predicted_in_advance": 0.9122807017543859
+  },
+  "H2_verdict": "FALSIFIED",
+  "H2_confirmed": false,
+  "decoupled_identification_consistency_pct": 1.0
+}
