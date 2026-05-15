@@ -164,7 +164,51 @@ Entran las features que TTF, CO2 y diferenciales aportan, porque ahora SÍ defin
 Si H1 se confirma → la arquitectura two-stage está justificada y avanzamos a Stage B con tranquilidad.
 Si H1 falla (AUC-ROC < 0.85 o AUC-PR < 0.30) → el DGP es más complejo que dos estados, hay que considerar hidden Markov de 3+ estados o régimen-switching estructural.
 
-**Métrica de éxito para Stage B condicional**: pinball loss q=0.95 dentro del modo desacoplado < 0.5 × pinball loss del v4-quantile actual aplicado al mismo subset. Es decir, el regresor condicional debe ser al menos el doble de preciso que el modelo no condicional dentro de la región de interés.
+### 7.1 Resultado de H1 (resuelto)
+
+H1 **falsada empíricamente**. Resultados en `results/v2_stage_a_metrics.json` y `results/v2_stage_a_rich_features_metrics.json`:
+
+| Configuración | AUC-ROC | AUC-PR |
+|---|---:|---:|
+| Logistic, 18 features básicas | 0.784 | 0.221 |
+| LightGBM, 18 features básicas | 0.856 | 0.357 |
+| Logistic, 33 features (rich, +v5) | 0.806 | 0.195 |
+| LightGBM, 33 features (rich, +v5) | 0.868 | 0.382 |
+
+Threshold sensitivity sweep (Camino 3) en `results/v2_stage_a_threshold_sweep.csv` confirma que el AUC es estable ~0.86 entre $\tau \in \{0.5, 1.0, 2.0\}$ €/MWh y baja a 0.84 con $\tau = 5$. **El threshold no es el problema; falta señal.**
+
+Top feature por gain (LightGBM rich): `run_length_prev` con un margen brutal sobre todas las demás. Esto significa que el clasificador depende principalmente de **persistencia del estado** y no de drivers físicos observables, lo cual es consistente con que la transición $0 \to 1$ no sea ex-ante determinística desde features hourly disponibles.
+
+### 7.2 H2 (pre-registrada antes de implementar)
+
+Dado que H1 falla con un techo de AUC $\sim$ 0.87, y siguiendo el plan pre-registrado para "considerar HMM con 3+ estados", probamos:
+
+> **H2**: un Hidden Markov Model con 3 estados gaussianos {acoplado, tensionado, desacoplado} con emisiones multivariadas condicionales en las features físicas (subconjunto del feature set de 33) alcanza AUC-ROC $> 0.92$ y AUC-PR $> 0.45$ sobre $S_t = \mathbb{1}\{|\text{spread}_t| > 0.5\,\text{€/MWh}\}$ en walk-forward semanal 2024, usando como predicción la probabilidad posterior smoothed
+> $$\hat{p}_t = \sum_{k \in \{\text{desacoplado}\}} P(\text{state}_t = k \mid x_{1:t-1}).$$
+
+**Especificación**:
+
+- Modelo: `hmmlearn.GaussianHMM(n_components=3)` con `covariance_type='full'`.
+- Estados (no etiquetados ex-ante por el modelo; identificación post-hoc): el modelo aprende 3 estados latentes; mapeo a {acoplado, tensionado, desacoplado} se hace ordenando por la magnitud media de $|\text{spread}|$ en el training de cada estado.
+- Features de observación: subconjunto de las 33 que tienen sentido como observación gaussiana (excluyendo dummies y lags binarios del propio estado, para no inducir circularidad). Ver script de implementación para la lista final.
+- Entrenamiento: walk-forward semanal sobre 2024. Se reentrena el HMM con todos los datos hasta el inicio de cada semana ISO.
+- Predicción: $P(\text{state}_t = \text{desacoplado} \mid x_{1:t-1})$ vía forward algorithm (no Viterbi posterior, porque queremos probabilidad calibrada, no estado más probable).
+
+**Umbrales de decisión**:
+
+- H2 **confirmada** si AUC-ROC $> 0.92$ AND AUC-PR $> 0.45$.
+- H2 **mejora marginal** si $0.88 \leq$ AUC-ROC $\leq 0.92$ (mejor que GBM rich pero por debajo del umbral pre-registrado). En este caso documentamos como contribución modesta y procedemos a Stage B con HMM como filtro.
+- H2 **falsada** si AUC-ROC $\leq 0.88$. En ese caso, el ruido de transición es **estocástico residual**, no estado oculto, y el techo de separabilidad con datos hourly DA es estructural. Esto sería un resultado científico fuerte y cierra v2 como "límites empíricos de la predicción de congestión desde DA-only data".
+
+**Métricas secundarias (informativas, no determinan H2)**:
+
+- Lead time mediano a transición $0 \to 1$ comparado con GBM rich.
+- Calibración (Brier score) y estabilidad temporal de las matrices de transición aprendidas.
+- Interpretabilidad: las medias de emisión por estado deberían tener una historia física razonable (ej. estado "tensionado" debería corresponder a NTC bajo + alta penetración renovable asimétrica).
+
+### 7.3 Métrica de éxito para Stage B (condicional a H1 o H2 confirmadas)
+
+Pinball loss q=0.95 dentro del modo desacoplado $< 0.5 \times$ pinball loss del v4-quantile actual aplicado al mismo subset. Es decir, el regresor condicional debe ser al menos el doble de preciso que el modelo no condicional dentro de la región de interés.
 
 ## 8. Próximos pasos
 
