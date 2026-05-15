@@ -1,5 +1,5 @@
 % =====================================================================
-% MIBEL Congestion Monitor v3 — Working paper (English edition)
+% MIBEL Congestion Monitor — Working paper (English edition)
 % Author: Carlo Vilches
 % Compile: pdflatex Memoria_MIBEL_v2.tex
 %          bibtex   Memoria_MIBEL_v2
@@ -36,189 +36,328 @@
 \sisetup{detect-weight=true, group-separator={\,}}
 \graphicspath{{../plots/}}
 
-\title{\textbf{Anomaly detection in the Spain--France Day-Ahead spread
-of the Iberian Electricity Market:\\
-a residual-based surveillance system with honest evaluation
-on open data (2019--2024)}}
-\author{Carlo Vilches\thanks{Working paper, version \texttt{v3.3}, 2026-05.
-The Spanish predecessor (\texttt{v1}, 2025) is preserved in
-\texttt{docs/Memoria\_MIBEL\_CarloVilches.pdf}. The present version
-(i)~incorporates a systematic post-hoc audit that corrected leakage in
-rolling features and in the régime-specific pooled comparison;
-(ii)~aligns regulatory dates to the entry into force of Royal
-Decree-Law 10/2022 (15 June 2022); (iii)~adds a quantile companion
-model (Model A v4, XGBoost with \texttt{reg:quantileerror},
-$\alpha = 0{,}95$) which provides formal econometric evidence on tail
-behaviour via the Giacomini--White conditional pinball test;
-(iv)~replaces the SHAP-based feature importance (blocked by a
-documented \texttt{shap} 0.48 / \texttt{xgboost} 3.2 incompatibility)
-by sklearn permutation importance with 30 repetitions, and
-(v)~adds a 9-variant cascade ablation that decomposes the median
-detection lag and identifies the operational Pareto trade-off.}}
+\title{\textbf{A residual-based surveillance system for the
+Spain--France Day-Ahead electricity spread,\\
+with empirical limits of ex-ante prediction\\
+from open hourly data (2019--2024)}}
+\author{Carlo Vilches\thanks{Working paper, 2026-05. Code, data and
+all numerical results in
+\texttt{https://github.com/cmvdata/mibel-congestion-monitor}.}}
 \date{\today}
 
 \begin{document}
 
 \maketitle
 
+% =====================================================================
 \begin{abstract}
+% =====================================================================
 \noindent
-We construct a residual-based surveillance system for the Day-Ahead
-electricity spread between Spain and France in the Iberian Electricity
-Market (MIBEL), over 2019--2024 ($n = 52\,530$ hourly observations),
-using exclusively open data. The architecture separates the
-\emph{fundamentals} model from the \emph{detection} module: an XGBoost
-\emph{ex ante} predictor estimates the expected spread, and the
-residuals feed a Verde/Ámbar/Naranja/Roja (Green/Amber/Orange/Red)
-cascade based on a 168-hour rolling \emph{z-score} with mandatory
-\texttt{shift(1)}. On the 2024 test set (out-of-sample, post-Iberian-
-Exception) the model achieves $R^2 = 0{,}539$ and
-$\mathrm{RMSE} = 3{,}22$~€/MWh. The XGBoost achieves lower RMSE than
-the competitive econometric benchmarks AR(1), AR(24) and LASSO with
-cross-validation, but with $n = 8\,783$ the Diebold--Mariano test does
-not reach 5\% significance against these competitors
-($p \in [0{,}06;\,0{,}12]$); on pinball loss at $q = 0{,}95$ the
-mean-error specification is dominated by AR(1) ($0{,}50$ vs
-$0{,}33$), as expected for a model that optimises mean error rather
-than the upper tail. A quantile companion specification (Model A v4,
-XGBoost with \texttt{reg:quantileerror}, $\alpha = 0{,}95$, identical
-feature set) directly optimises the relevant loss and outperforms
-AR(1) on out-of-sample pinball at $q = 0{,}95$ ($0{,}27$ vs $0{,}33$;
-Giacomini--White conditional test, $p < 10^{-3}$). The two
-specifications serve complementary purposes: the mean-error model
-feeds the operational anomaly cascade (residuals centred at zero),
-while the quantile model provides the formal econometric evidence on
-tail behaviour. Statistical significance is maintained
-against the naive benchmarks (persistence and zero level,
-$p < 10^{-3}$). The system is validated systematically against a
-pre-specified panel of 40 documented events: 83\% of the 24 in-window
-events (2022--2024) are detected; the McNemar test on paired
-discordant cells against a naive $|\text{spread}| > p_{99}$
-régime-specific benchmark does not reach 5\% significance with
-$n = 24$ ($p = 0{,}50$), and the naive benchmark itself is sensitive
-to the calibration window (full-regime vs train-only percentile). The
-contribution of the cascade is therefore in the structured alert
-hierarchy and explicit precision--coverage trade-off rather than in a
-raw recall lift over the naive. Régime-specific models outperform the unified
-pooled specification by an ample margin in the Crisis-and-Iberian-
-Exception regime ($-18{,}1\%$ RMSE) and produce a tie ($< 2\%$ RMSE) in
-the pre-crisis and post-exception regimes; the hypothesis of dominant
-transfer learning across regimes is therefore rejected. We further
-report an operational calibration analysis (Pareto frontier across 100
-threshold combinations) showing that the default cascade lies above
-the elbow of the precision-coverage trade-off and admits a five-fold
-reduction in alert volume while preserving recall and improving
-precision@72h from 0.148 to 0.212. The system positions itself as a
-quantitative screening layer for REMIT~II-grade surveillance; as a
-stand-alone tool it does not satisfy ACER's transaction-reporting
-requirements.
+We build a residual-based surveillance system for the Day-Ahead
+electricity spread between Spain and France in the Iberian
+Electricity Market (MIBEL), 2019--2024 ($n = 52\,530$ hourly
+observations), using only publicly available data. The contribution
+is twofold. First, we deliver an operational alert cascade
+(Verde/Ámbar/Naranja/Roja) that detects $83.3\%$ of a pre-specified
+panel of 40 documented congestion events on the 2024 out-of-sample
+test, with a Pareto-optimal calibration achieving identical coverage
+at $4.3$ alerts/month and precision@72h of $0.212$. The mean-error
+fundamentals model that drives the cascade does not statistically
+beat AR(1) on point prediction at conventional levels
+($p \in [0.06, 0.12]$ on Diebold--Mariano squared error). A quantile
+companion specification with identical features
+(\texttt{reg:quantileerror}, $\alpha = 0.95$) directly optimises tail
+loss and outperforms AR(1) on the Giacomini--White conditional pinball
+test ($p < 10^{-3}$). Second, we establish the empirical ceiling of
+ex-ante prediction of the underlying congestion regime from open
+hourly Day-Ahead features. Two hypotheses pre-registered before
+modelling are falsified by walk-forward weekly evaluation: a
+binary-state classifier with 33 physical features achieves
+AUC-ROC $\leq 0.87$; a 3-state Gaussian Hidden Markov Model
+underperforms ($0.60$) by a wide margin. The residual transition
+noise is therefore stochastic rather than hidden-state separable;
+further gains require data not publicly available at hourly DA
+granularity (intraday flows, XBID transactions). The system is
+positioned as a quantitative screening layer compliant with REMIT II
+Article 15, where the four-week notification window from awareness
+admits an alert lead time of $180$h ($\approx 7.5$ days).
 \end{abstract}
 
 % =====================================================================
-\section{Introduction and objectives}
+\section{Introduction}\label{sec:intro}
 % =====================================================================
 
-The Iberian Electricity Market (MIBEL) operates under a market-coupling
-mechanism with the rest of Europe through the Spain--France
-interconnection. When commercial Available Transfer Capacity (ATC) is
-sufficient, prices on both sides of the border converge; when the
-interconnection saturates, the markets decouple and a price differential
-or \emph{spread} emerges, reflecting the physical congestion of the
-grid. The European electricity-integration literature \citep{Newbery2016}
-documents the welfare gains from such convergence and the costs
-associated with its loss during congestion episodes.
+The Iberian Electricity Market (MIBEL) is coupled with the rest of
+Europe through the Spain--France interconnection. When commercial
+Available Transfer Capacity (ATC) is sufficient, the two markets
+converge to a common price; when the interconnection saturates, the
+markets decouple and a price differential (\emph{spread}) emerges
+that reflects the physical congestion of the link
+\citep{Newbery2016}. Market surveillance under REMIT II requires
+identifying these events early enough that an analyst can produce a
+documented notification within the four-week window stipulated in
+Articles 15(1) and 15(2) of the Regulation \citep{ACER2024}.
 
-The objective of this work is to construct a \textbf{residual-based
-surveillance system} for the Day-Ahead (DA) Spain--France spread. The
-architecture separates the \emph{estimation} of the expected market
-behaviour from the \emph{detection} of anomalies. An economic
-fundamentals model (XGBoost, \emph{ex ante}) predicts the expected
-spread given the state of the system; the residual between the
-observed and predicted spread is used as an operational signal.
-Episodes with residuals that are persistently large in magnitude
-\emph{relative} to the recent volatility of the same regime signal
-deviations that cannot be explained by the observed fundamentals.
-Parametric modelling of spread risk has precedents in \citet{Bunn2016}.
+This paper develops and evaluates a residual-based surveillance
+pipeline for the ES--FR DA spread that combines a fundamentals model
+(XGBoost) with an anomaly-detection cascade on the residuals, and
+positions it explicitly within the empirical limits of what
+hourly DA data can support. Two distinct contributions are reported.
+First, an \emph{operational} contribution: an alert hierarchy that
+matches an independent pre-specified event panel under transparent
+Pareto-calibrated thresholds. Second, a \emph{methodological}
+contribution: pre-registered hypotheses --- one on a single-step
+two-state classifier (H1) and one on a Hidden Markov Model with three
+latent states (H2) --- both empirically falsified by walk-forward
+evaluation. The combination of operational utility and pre-registered
+methodological limits is the central claim of the paper: the
+proposed cascade does as well as the data allow, and the data do not
+allow more.
 
-The system positions itself as a complementary indicator that could
-be integrated into surveillance pipelines under REMIT~II. As a
-stand-alone tool it \textbf{does not} satisfy ACER's transaction-
-reporting requirements \citep{ACER2024}, which demand granular
-bid-ask data, order-book information and REMIT transaction reports
-not consumed by this model. The connection with regulation is
-therefore operational and limited, not exhaustive.
-
-This version refines two aspects of the initial release: the dating
-of the regulatory regimes (following the actual entry into force of
-Royal Decree-Law~10/2022, 15 June 2022) and the alignment between
-the methodology described and the code implementation, including the
-correction of three leakage and calibration issues uncovered by a
-systematic post-hoc audit (see Note on revised metrics at the
-beginning of Section~\ref{sec:results}).
+The remainder is organised as follows.
+Section~\ref{sec:data} describes the data, the regulatory regimes,
+and the empirical structure of the spread itself (zero-inflation,
+transition asymmetry, conditional distribution).
+Section~\ref{sec:methodology} introduces the feature set, the
+two-model architecture, and the cascade.
+Section~\ref{sec:econometrics} reports the econometric evaluation
+(Diebold--Mariano, Giacomini--White, Kupiec--Christoffersen, LQRA,
+cross-year robustness, feature importance).
+Section~\ref{sec:operational} validates the cascade against the
+40-event panel and presents the Pareto calibration.
+Section~\ref{sec:limits} reports the pre-registered hypothesis tests
+and establishes the empirical ceiling for ex-ante prediction with
+open DA data.
+Section~\ref{sec:conclusions} concludes and lists data requirements
+for a successor system.
 
 % =====================================================================
-\section{Data and methodology}
+\section{Data and empirical structure of the spread}\label{sec:data}
 % =====================================================================
 
 \subsection{Data sources and licensing}
 
-The project uses exclusively open data sources. The final dataset
-covers 2019-01-01 to 2024-12-31, $n = 52\,530$ hourly observations
-after dropping rows with null target or key lag.
+All inputs are public:
+
+\begin{itemize}
+\item \textbf{Day-Ahead prices ES and FR}: OMIE auction settlement
+hourly prices, 2019-01-01 to 2024-12-31 (OMIE public API).
+\item \textbf{Net Transfer Capacity ES$\leftrightarrow$FR}:
+JAO SWE CCR explicit-auction NTC, hourly, from September 2022.
+For 2019-2021 we use an implicit NTC proxy derived from OMIE
+clearing flags; the dataset carries a binary
+\texttt{ntc\_is\_observed} indicator so the model can discriminate
+between observed and imputed periods.
+\item \textbf{Gas (TTF Front Month, EUR/MWh)} and
+\textbf{CO$_2$ (EU ETS EUA, EUR/t)}: daily Yahoo Finance close,
+forward-filled to hourly. Real-time deployment would require a
+licensed Euronext or ICE Endex feed; this caveat is part of the
+operational positioning (Section~\ref{sec:operational}).
+\item \textbf{Documented event panel}: 40 ES--FR congestion events
+2019--2024 curated from CNMC bulletins, OMIE annual reports, REE
+operational notes and RTE \emph{Bilan Électrique}, with
+\texttt{date\_start}, \texttt{date\_end}, type
+(MARKET / INFRASTRUCTURE / CLIMATIC / REGULATORY / LABOUR /
+GEOPOLITIC) and magnitude (BAJA / MEDIA / ALTA / MUY\_ALTA).
+\end{itemize}
+
+The full dataset (52,530 hourly rows, 45 columns including all
+derived features) is in
+\texttt{data/processed/mibel\_dataset\_20190101\_20241231.parquet}.
+
+\paragraph{Caveat on \texttt{yfinance}.} TTF and EUA from
+\texttt{yfinance} are practical but not a primary regulatory source.
+A serious operational deployment requires a subscription to
+Euronext/EEX (TTF) or ICE Endex (EUA).
+
+\subsection{Regulatory regimes}\label{sec:regimes}
+
+We define three regulatory periods motivated by structural breaks in
+the electricity market:
+
+\begin{itemize}
+\item \texttt{pre\_crisis}: 2019-01-01 to 2021-12-31. Pre-pandemic
+and pre-energy-crisis baseline.
+\item \texttt{crisis\_y\_excepcion}: 2022-01-01 to 2023-12-31.
+Aggregates the first half of 2022 (energy crisis without intervention)
+and the Iberian Exception (Royal Decree-Law 10/2022, entered into
+force 15 June 2022) until its termination on 31 December 2023.
+\item \texttt{post\_excepcion}: 2024-01-01 to 2024-12-31.
+Post-intervention regime, used as the out-of-sample test for the
+operational results.
+\end{itemize}
+
+Régime-specific calibration is justified empirically by the within-
+regime spread dispersion: $p_{99}|s|$ ranges from $5.97$ (pre\_crisis)
+to $34.63$ €/MWh (crisis\_y\_excepcion), a factor of nearly six.
+
+\subsection{Empirical structure of the spread}\label{sec:dgp}
+
+The spread $\mathrm{spread}_t = \mathrm{price\_es}_t -
+\mathrm{price\_fr}_t$ is not a continuous heavy-tailed series. It is
+a zero-inflated process with two physically distinct states:
+\emph{coupled markets} where arbitrage forces prices together and
+\emph{decoupled markets} where the interconnection is binding.
+Table~\ref{tab:zero-inflation} reports the mass concentration.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Data sources.}
-\label{tab:fuentes}
-\begin{tabularx}{\linewidth}{lXll}
+\caption{Zero-inflation: distribution of $|\mathrm{spread}|$ across
+the full 2019--2024 sample.}
+\label{tab:zero-inflation}
+\begin{tabular}{lrr}
 \toprule
-\textbf{Variable} & \textbf{Source} & \textbf{Resolution} & \textbf{Access} \\
+\textbf{Threshold} & \textbf{Hours} & \textbf{Fraction} \\
 \midrule
-DA prices ES/FR        & OMIE                & Hourly  & Public (direct download) \\
-Intraday prices        & OMIE                & Hourly  & Public (direct download) \\
-NTC ES$\leftrightarrow$FR & JAO SWE CCR      & Hourly  & Public (REST API, no token) \\
-TTF gas price          & Yahoo Finance       & Daily   & Public (\texttt{yfinance}) \\
-CO$_2$ EUA allowances  & Yahoo Finance       & Daily   & Public (\texttt{yfinance}) \\
+$|s| = 0$ exact            & 50\,180 & 95.53\% \\
+$|s| \leq 0.5$ €/MWh       & 50\,476 & 96.09\% \\
+$|s| \leq 1$ €/MWh         & 50\,567 & 96.27\% \\
+$|s| \leq 2$ €/MWh         & 50\,807 & 96.72\% \\
+$|s| > 50$ €/MWh           &     124 & 0.24\% \\
+$|s| > 100$ €/MWh          &       9 & 0.02\% \\
 \bottomrule
-\end{tabularx}
+\end{tabular}
 \end{table}
 
-\paragraph{Caveat on yfinance.} The use of \texttt{yfinance} for TTF
-and EUA series is convenient for reproducibility but is \emph{not} a
-primary regulatory source: Yahoo Finance is an aggregator and its
-terms of service limit systematic scraping. The official TTF series
-are hosted at Euronext/EEX and the EUA series at ICE Endex; a
-serious operational deployment would require a subscription to one
-of those sources. The pipeline raises an explicit error if the
-downloader returns empty data; silent fallbacks to synthetic series
-are disabled.
+The implication for the modelling design is direct: a regression on
+$\mathrm{spread}_t$ with mean-squared-error loss devotes most of its
+capacity to predicting zero, an outcome that a trivial constant
+predictor already matches 95.5\% of the time. The interesting
+behaviour is in the 3.91\% of hours where $|s| > 0.5$, and the
+target of the surveillance system is precisely this tail.
 
-\subsection{Regulatory regimes}
+\paragraph{Binary state and transitions.} We define
+$S_t = \mathbb{1}\{|\mathrm{spread}_t| > 0.5\,\text{€/MWh}\}$. The
+threshold is justified by the small mass between $0$ and $0.5$
+(0.6 percentage points, consistent with auction-clearing tick noise).
+The empirical $2 \times 2$ transition matrix is
 
-A relevant methodological contribution is the correct dating of the
-regulatory regimes. Version \texttt{v1} used a calendar cut-off
-(1 January 2022) that mixes the pre-gas-cap crisis (Russian invasion
-of Ukraine, 24 February 2022) with the Iberian Exception (which
-entered into force on 15 June 2022 via Royal Decree-Law~10/2022 and
-ended on 31 December 2023). For sample-size reasons (the
-``crisis-without-cap'' sub-regime would have $\approx 3\,960$ hours
-only) we consolidate both sub-periods into a single
-\texttt{crisis\_y\_excepcion} regime, but we explicitly declare the
-regulatory change date and discuss its implications \citep{Fabra2023}.
-The three final regimes are:
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lcc}
+\toprule
+ & $S_{t+1} = 0$ & $S_{t+1} = 1$ \\
+\midrule
+$S_t = 0$ & \textbf{0.9851} & 0.0149 \\
+$S_t = 1$ & 0.3656 & \textbf{0.6344} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Both states are persistent but asymmetrically so. The decoupled
+state has typical run length of 2--3 hours (median 2, p95 8, max 17)
+while the coupled state runs for tens of hours (median 23, mean 67,
+max 798). The decoupling rate also varies $8.7\times$ by hour of
+day, from $0.96\%$ at 22h to $8.41\%$ at 15h (solar peak ibérico).
+Conditional on $S_t = 1$, the magnitude distribution is itself
+heavy-tailed (median $|s|$ given decoupled $= 5.9$ €/MWh, p95 $56$,
+max $122$) and asymmetric: $75\%$ of decoupled hours have
+$\mathrm{spread} > 0$ (ES $>$ FR).
+
+\paragraph{Implication for architecture.} These properties motivate
+the two-model architecture of Section~\ref{sec:methodology}: a
+mean-error model whose residuals drive the operational cascade, and
+a quantile companion model that targets the upper-tail magnitude
+directly. Neither is a direct two-stage hurdle model
+(Section~\ref{sec:limits} explains why such a hurdle, when tested,
+fails to deliver the expected gains given the available features).
+
+\subsection{Data audit and residual diagnostics}\label{sec:eda}
+
+A retrospective audit of the dataset
+(\texttt{scripts/eda\_audit.py}, full report in
+\texttt{results/eda\_audit\_report.txt}) confirms the data-quality
+preconditions:
 
 \begin{itemize}
-\item \texttt{pre\_crisis}: 2019-01-01 to 2021-12-31
-   ($n = 26\,253$).
-\item \texttt{crisis\_y\_excepcion}: 2022-01-01 to 2023-12-31
-   ($n = 17\,494$). Includes the pre-cap crisis (January--14 June 2022)
-   and the Iberian Exception (15 June 2022 to 31 December 2023).
-\item \texttt{post\_excepcion}: 2024-01-01 to 2024-12-31
-   ($n = 8\,783$).
+\item $\mathrm{spread\_da}_t = \mathrm{price\_es}_t -
+\mathrm{price\_fr}_t$ holds to numerical precision (no sign
+convention error).
+\item No duplicate timestamps; gaps in the hourly index correspond
+to documented DST transitions.
+\item The 9 hours with $|s| > 100$ €/MWh map to verified event
+timestamps (28 August 2022 morning during the FR nuclear-availability
+trough; 1 May 2023 negative-price episode in ES).
+\item Negative DA prices in \texttt{price\_es} ($0.37\%$) and
+\texttt{price\_fr} ($0.47\%$) are real market outcomes during
+oversupply episodes, not data errors.
 \end{itemize}
 
-\subsection{System architecture and feature engineering}\label{sec:arch}
+Diagnostic checks on the residuals of the canonical mean-error model
+(see Section~\ref{sec:methodology}) reveal three properties relevant
+for interpretation. (i) On a single 2019--2023 training the
+in-sample residual lag-1 autocorrelation is only $-0.08$; the
+apparent $+0.61$ in the concatenated walk-forward residuals is an
+artefact of fold-boundary discontinuities, not model
+mis-specification. We verified this empirically: an AR(6) correction
+fitted on training residuals \emph{deteriorates} the test RMSE
+(3.41 $\to$ 3.58 €/MWh, Diebold--Mariano $p = 0.0001$ in favour of
+the uncorrected baseline), confirming that within-fold structure is
+adequately captured. (ii) Residual skewness $= 8.2$ and excess
+kurtosis $= 154$ confirm the heavy-tailed non-Gaussian nature of the
+residual distribution; this is the formal explanation for why
+parametric upper bounds based on residual normality under-cover
+catastrophically (Section~\ref{sec:econometrics}). (iii) The Engle
+ARCH-LM test on 24 lags rejects homoscedasticity
+($p < 10^{-3}$), which is the empirical justification for
+régime-specific threshold calibration in the cascade.
+
+% =====================================================================
+\section{Methodology}\label{sec:methodology}
+% =====================================================================
+
+\subsection{Feature engineering}\label{sec:features}
+
+The feature set \texttt{FEATURES\_A\_CLEAN} (26 variables, see
+listing in \texttt{scripts/train\_model\_v3.py}) is constructed
+strictly with respect to the information available at the moment of
+DA auction clearing. It contains:
+
+\begin{itemize}
+\item Spread lags at 1, 2, 3, 6, 12, 24, 48 and 168 hours
+(\texttt{spread\_da\_lag*h}). Within-day lags (1--12 h) are
+acceptable under the surveillance framing because they are observed
+ex-post; this is consistent with how AR(1) is benchmarked against
+the model.
+\item Rolling mean and rolling standard deviation of the spread at
+24 h and 168 h horizons, computed with \texttt{shift(1)} to avoid
+leakage of the target.
+\item Energy fundamentals: TTF gas, CO$_2$ EUA, spark spread, clean
+spark spread, with TTF lags at 24 h and 168 h.
+\item NTC ES$\to$FR, NTC FR$\to$ES, and a binary
+\texttt{ntc\_is\_observed} flag (1 from September 2022, 0 before).
+\item Calendar: hour, day-of-week, month, weekend, night, peak.
+\end{itemize}
+
+An earlier set including ATC-derived features
+(\texttt{atc\_congestion}, \texttt{atc\_fatigue}) was discarded
+because in the 2019--August 2022 sub-period these features are
+defined as a direct transformation of the spread itself
+(\texttt{jao\_downloader.py:148--157}), introducing leakage. The
+\texttt{FEATURES\_A\_CLEAN} suffix flags their exclusion.
+
+\subsection{Two-model architecture}\label{sec:architecture}
+
+Two XGBoost specifications share the same feature set and training
+window (2019--2023 expanding) but differ in the loss function and
+the use of their output:
+
+\begin{itemize}
+\item \textbf{Model A v3} (\textbf{mean-error},
+\texttt{objective=reg:squarederror}): standard XGBoost on the spread.
+Its residuals drive the operational alert cascade.
+The residuals are centred near zero, which is what the cascade
+requires.
+\item \textbf{Model A v4} (\textbf{quantile},
+\texttt{objective=reg:quantileerror}, $\alpha = 0.95$): identical
+feature set, only the loss changes. The predictions target the
+conditional 95-quantile of the spread and are evaluated
+econometrically against AR(1) and AR(24) on the matching pinball
+loss. Its predictions are not used for the cascade (they are biased
+upward by construction).
+\end{itemize}
 
 Figure~\ref{fig:architecture} summarises the end-to-end pipeline.
 
@@ -247,13 +386,11 @@ Figure~\ref{fig:architecture} summarises the end-to-end pipeline.
   arrow/.style={->, >=stealth, thick}
 ]
 
-% Inputs row
 \node[data] (omie) at (-4.5, 4.5) {OMIE prices\\ES, FR};
 \node[data] (jao)  at (-1.5, 4.5) {JAO NTC\\ES$\leftrightarrow$FR};
 \node[data] (ttf)  at ( 1.5, 4.5) {TTF gas,\\CO$_2$ EUA};
 \node[data] (cal)  at ( 4.5, 4.5) {Calendar,\\regime};
 
-% Feature set
 \node[feat] (feats) at (0, 2.8)
   {\textbf{FEATURES\_A\_CLEAN} (26 features)\\
    spread lags, rolling stats, fundamentals, NTC, calendar};
@@ -263,21 +400,18 @@ Figure~\ref{fig:architecture} summarises the end-to-end pipeline.
 \draw[arrow] (ttf)  -- (feats);
 \draw[arrow] (cal)  -- (feats);
 
-% Two model heads
 \node[model] (v3) at (-2.5, 1.0) {Model A v3\\XGBoost MSE};
 \node[model] (v4) at ( 2.5, 1.0) {Model A v4\\XGBoost pinball $q=0{,}95$};
 
 \draw[arrow] (feats) -- (v3);
 \draw[arrow] (feats) -- (v4);
 
-% Two outputs
 \node[detect] (res) at (-2.5, -0.5) {Residuals $r_t$};
 \node[out]    (q95) at ( 2.5, -0.5) {$\hat{q}_{0{,}95}(\text{spread})$};
 
 \draw[arrow] (v3) -- (res);
 \draw[arrow] (v4) -- (q95);
 
-% Detection layer (only on residuals)
 \node[detect] (z)     at (-4.6, -2.2) {Rolling\\$z$-score 168h};
 \node[detect] (iso)   at (-2.5, -2.2) {Isolation\\Forest};
 \node[detect] (cusum) at (-0.4, -2.2) {Bilateral\\CUSUM};
@@ -286,7 +420,6 @@ Figure~\ref{fig:architecture} summarises the end-to-end pipeline.
 \draw[arrow] (res) -- (iso);
 \draw[arrow] (res) -- (cusum);
 
-% Cascade levels
 \node[alert, fill=green!50]  (g) at (-3.6, -3.8) {Verde};
 \node[alert, fill=yellow!60] (a) at (-1.9, -3.8) {Ámbar};
 \node[alert, fill=orange!70] (n) at (-0.2, -3.8) {Naranja};
@@ -299,7 +432,6 @@ Figure~\ref{fig:architecture} summarises the end-to-end pipeline.
 \draw[arrow] (cusum) -- (n);
 \draw[arrow] (cusum) -- (r);
 
-% Outputs box
 \node[out] (oper) at (-2.0, -5.4)
   {Alert registry,\\event-panel validation,\\Pareto calibration};
 \node[out] (econ) at ( 2.5, -5.4)
@@ -313,739 +445,417 @@ Figure~\ref{fig:architecture} summarises the end-to-end pipeline.
 
 \end{tikzpicture}
 \caption{End-to-end system architecture. Open public data sources
-(OMIE, JAO, financial fundamentals) feed a single
-\texttt{FEATURES\_A\_CLEAN} feature set. Two XGBoost specifications
-share the inputs: a mean-error model (A v3) whose residuals drive the
-operational Verde/Ámbar/Naranja/Roja alert cascade via rolling
-$z$-score, IsolationForest and bilateral CUSUM, and a quantile
-companion (A v4) that produces the upper-tail predictions evaluated
-econometrically (Giacomini--White pinball test, Kupiec, Christoffersen).
-The two model heads address two different questions on the same data:
-operational anomaly detection and formal tail-prediction inference.}
+feed a single \texttt{FEATURES\_A\_CLEAN} set. The mean-error model
+(A v3) supplies residuals to the operational cascade; the quantile
+companion (A v4) supplies upper-tail predictions evaluated
+econometrically. The two heads answer different questions on the
+same data: operational anomaly detection and formal tail-prediction
+inference.}
 \label{fig:architecture}
 \end{figure}
 
-The system is organised in three sequential phases:
+\subsection{Anomaly detection cascade}\label{sec:cascade}
 
-\begin{enumerate}
-\item \textbf{Fundamentals modelling (XGBoost)} with the
-``A clean'' feature set: lags of the DA spread, rolling means and
-rolling volatility, energy fundamentals (TTF, CO$_2$, spark spread,
-clean spark spread), NTC ES$\leftrightarrow$FR with an observability
-indicator, and calendar variables. The choice of XGBoost over
-classical econometric alternatives (LASSO, AR) is justified
-empirically in Section~\ref{sec:bench-dm}; deep neural networks are
-not explored because of their interpretability cost relative to the
-expected gain at this hourly horizon \citep{Lago2018, Lago2021}.
+The cascade processes the residuals of Model A v3 in three parallel
+detectors and combines them into four alert levels.
 
-\item \textbf{Residuals computation}:
-\[
-r_t = \mathrm{spread}_\text{DA}^\text{obs}(t) - \widehat{\mathrm{spread}}_\text{DA}(t).
-\]
+\paragraph{Rolling $z$-score.} For each hour $t$ the residual is
+normalised as
+$z_t = (r_t - \mu_{t-168 : t-1}) / \sigma_{t-168 : t-1}$ with a
+mandatory \texttt{shift(1)} that excludes the contemporaneous
+residual. A numerical floor at $\sigma \geq 0.1\,\sigma_{\text{global}}$
+and a symmetric $\pm 10$ clip on $z_t$ prevent artefactual
+amplification in low-volatility periods.
 
-\item \textbf{Detection modules}: a 168-hour \emph{rolling z-score}
-with \texttt{shift(1)}, a multivariate \emph{Isolation Forest}, and a
-bilateral \emph{CUSUM} for persistence. The Green/Amber/Orange/Red
-cascade requires simultaneous confirmation of independent criteria
-for the higher alert levels.
-\end{enumerate}
+\paragraph{Isolation Forest.} An IsolationForest is trained
+per-regime on the first 50\% chronological half of the regime and
+applied to the full regime; the score is normalised to $[0,1]$
+within each regime.
 
-\paragraph{Treatment of interconnection capacity.}
-Prior to September 2022 no JAO-observed NTC data are available. The
-construction of binary proxies derived from the spread itself
-(\texttt{atc\_implicit}, \texttt{atc\_congestion},
-\texttt{atc\_fatigue}) is rejected because it introduces \emph{target
-leakage}; the final feature set restricts NTC variables to the
-post-September-2022 period, imputing the pre-September-2022 missing
-values with the median computed over the first 90 days of JAO
-observed data (an out-of-sample window) and an
-\texttt{ntc\_is\_observed} binary flag that takes value 1 when JAO
-data are available and 0 otherwise. The economic interpretation of
-the NTC coefficient applies only to the sub-period with observed data.
+\paragraph{Bilateral CUSUM.} A bilateral cumulative-sum statistic
+on standardised residuals with reference parameter $k = 0.5$ and
+decision threshold $h = 5$ counts consecutive hours of CUSUM
+activity.
 
-\paragraph{Rolling features without target leakage.}
-The rolling means \texttt{spread\_da\_ma24h},
-\texttt{spread\_da\_ma168h} and the rolling standard deviation
-\texttt{spread\_da\_std24h} are constructed by applying
-\texttt{shift(1)} before the rolling window, so that the window never
-includes the value of the target at time $t$. The implementation
-forces unconditional recomputation of these features, overwriting any
-pre-computed columns that may carry over from earlier versions of the
-pipeline.
+\paragraph{Alert cascade.} The four-level classification, identical
+to the original PDF specification, is
+
+\begin{itemize}
+\item \textbf{Verde}: $|z| < p_{90}^{\text{regime}}$
+\emph{and} IF$_{\text{score}} < p_{95}^{\text{global}}$.
+\item \textbf{Ámbar}: $p_{90} \leq |z| < p_{95}$
+\emph{or} IF $\geq p_{95}$.
+\item \textbf{Naranja}: $|z| \geq p_{95}$
+\emph{and} (IF $\geq p_{95}$ \emph{or} CUSUM persistent $\geq 1$h).
+\item \textbf{Roja}: $|z| \geq p_{99}$ \emph{and}
+IF $\geq p_{95}$ \emph{and} CUSUM persistent $\geq 3$h.
+\end{itemize}
+
+The percentile thresholds $p_{90}, p_{95}, p_{99}$ are computed
+\emph{only} on the first 50\% temporal half of each regime, then
+applied to the rest of the regime. This avoids look-ahead. The
+estimated regime-specific values for the test period
+(\texttt{results/regime\_thresholds\_v3.json}) are
+$p_{99}^{\text{post\_excepcion}} = 6.12$,
+$p_{99}^{\text{crisis\_y\_excepcion}} = 5.74$.
 
 % =====================================================================
-\section{Modelling results}\label{sec:results}
+\section{Econometric evaluation}\label{sec:econometrics}
 % =====================================================================
 
-\paragraph{Note on revised metrics.} Figures reported in this version
-differ from preliminary results referenced in earlier project artefacts
-(repository tags \texttt{v3.1.0} and prior). Three methodological
-issues were identified through systematic post-hoc audit and
-corrected. (i) NTC imputation in the pre-September-2022 sub-sample
-previously used the median of the full JAO observation period; the
-corrected implementation uses the median of the first 90 observed
-days, avoiding the leakage of post-Iberian-Exception 2024 information
-into the 2019--2021 window. (ii) Rolling features were constructed
-without lagging the input, causing the rolling window to include the
-target value; a conditional column guard initially prevented the
-corrective \texttt{shift(1)} from taking effect even after the
-correction had been declared. The corrected pipeline forces
-unconditional recomputation. (iii) The unified pooled model used in
-the régime-specific comparison was trained on chronological splits
-within each regime, allowing observation of later regimes when
-evaluating earlier ones. The corrected implementation uses a single
-temporal cut-off shared by all three test slices. Items (ii) and (iii)
-materially affected the reported metrics: the test 2024 $R^2$
-decreased from $0{,}652$ to $0{,}539$ and the unified-versus-régime
-comparison shifted accordingly. The qualitative conclusions remain
-intact: the system outperforms naive benchmarks, detects 83\% of
-pre-specified events, and admits operational recalibration to
-regulatory capacity. All corrections are documented in the git
-history of the project repository.
+\subsection{Walk-forward and competitive benchmarks}\label{sec:bench}
 
-\subsection{Expanding-window evaluation}\label{sec:bench}
+Training is performed on an expanding-window scheme: data
+$<$ 2024-01-01 is used to train, the year 2024 is the
+out-of-sample test ($n = 8\,783$). We compare against five
+benchmarks:
 
-The models are evaluated through an \textbf{expanding-window scheme
-with two splits aligned to the regulatory regimes} (not a strict
-walk-forward). The splits are:
+\begin{itemize}
+\item \textbf{AR(1)} and \textbf{AR(24)} via
+\texttt{statsmodels.AutoReg}, rolling 1-step-ahead.
+\item \textbf{LASSO} with \texttt{LassoCV(cv=5)} on the standardised
+\texttt{FEATURES\_A\_CLEAN}.
+\item \textbf{M0 (persistence)}: $\hat{s}_t = s_{t-24}$.
+\item \textbf{M0b (zero)}: $\hat{s}_t = 0$.
+\end{itemize}
 
-\begin{enumerate}
-\item Train: \texttt{pre\_crisis}; test: \texttt{crisis\_y\_excepcion}.
-\item Train: $<$ 2024-01-01; test: 2024 (pure out-of-sample,
-post-Exception).\footnote{After correcting the regime dating in line
-with Royal Decree-Law~10/2022, this split coincides with the ``train
-pre $\cup$ crisis $\to$ test post-exception'' partition: the closing
-of \texttt{crisis\_y\_excepcion} on 31 December 2023 aligns both
-partitions, which produce identical metrics.}
-\end{enumerate}
-
-\paragraph{Table~\ref{tab:t1}: performance on the 2024 test set.}
-Table~\ref{tab:t1} reports the metrics of Model A v3 on the 2024
-out-of-sample test set: $R^2 = 0{,}539$, $\mathrm{RMSE} = 3{,}218$~€/MWh,
-$\mathrm{MAE} = 0{,}684$~€/MWh and
-$\mathrm{Recall@}|\!\mathrm{spread}|>2 = 0{,}635$.
+Statistical comparison uses the Diebold--Mariano test
+\citep{Diebold1995} on squared-error loss with Newey--West HAC
+variance (Andrews 1991 lag rule). 95\% CIs on RMSE are computed
+with circular block-bootstrap (1000 replicates, 24h blocks,
+sensitivity at 168h).
 
 \begin{table}[H]
 \centering
 \small
-\caption{Table~1 --- Model A v3 on the 2024 test set (pure
-out-of-sample, post-Exception). RMSE and MAE in €/MWh; Recall over
-hours with $|\mathrm{spread}_{\mathrm{DA}}| > 2$~€/MWh.}
-\label{tab:t1}
-\begin{tabular}{lrrrr}
-\toprule
-\textbf{Model} & \textbf{RMSE} & \textbf{MAE} & \textbf{$R^2$} & \textbf{Recall@ext} \\
-\midrule
-Model A v3 (XGBoost) & 3{,}218 & 0{,}684 & 0{,}539 & 0{,}635 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Régime-specific models}\label{sec:regime-specific}
-
-A separate XGBoost is trained for each regime, with an 80/20
-chronological split inside each regime, and is compared against a
-unified pooled model. The unified pooled is trained on the full
-time series prior to the earliest test slice (single temporal
-cut-off), preventing leakage of later regime information into the
-evaluation of earlier regimes. The régime-specific models are
-reported only for Table~\ref{tab:t3}; the \textbf{operational alert
-system continues to feed from the unified Model A} (the residuals
-of the expanding-window evaluation) to preserve coverage of
-$\sim 35\,000$~hours.
-
-\begin{table}[H]
-\centering
-\small
-\caption{Régime-specific models against the unified pooled model.
-Metrics on the last 20\% temporal slice of each regime. RMSE in
-€/MWh. The unified pooled model is trained with a single temporal
-cut-off (the earliest test-slice start) to prevent leakage of
-later-regime information.}
-\label{tab:t3}
-\begin{tabular}{llrrrrr}
-\toprule
-\textbf{Regime} & \textbf{Spec} & \textbf{$n$} & \textbf{RMSE} & \textbf{MAE} & \textbf{$R^2$} & \textbf{Recall@ext} \\
-\midrule
-pre\_crisis        & regime\_specific & 5\,251 & 1{,}654 & 0{,}360 & 0{,}258 & 0{,}525 \\
-pre\_crisis        & unified          & 5\,251 & \textbf{1{,}628} & 0{,}416 & \textbf{0{,}282} & 0{,}525 \\
-\midrule
-crisis\_y\_excepcion & regime\_specific & 3\,499 & \textbf{2{,}918} & 0{,}526 & \textbf{0{,}425} & 0{,}438 \\
-crisis\_y\_excepcion & unified          & 3\,499 & 3{,}565 & 0{,}643 & 0{,}142 & 0{,}469 \\
-\midrule
-post\_excepcion    & regime\_specific & 1\,757 & 2{,}295 & 0{,}505 & 0{,}203 & 0{,}500 \\
-post\_excepcion    & unified          & 1\,757 & \textbf{2{,}261} & 0{,}646 & \textbf{0{,}226} & 0{,}523 \\
-\midrule
-POOLED\_ALL        & unified          & 10\,507 & 2{,}532 & 0{,}530 & 0{,}187 & 0{,}503 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\noindent\textbf{Reading.} The régime-specific model outperforms the
-unified pooled model by an ample margin in
-\texttt{crisis\_y\_excepcion} ($-18{,}1\%$ RMSE), while in
-\texttt{pre\_crisis} and \texttt{post\_excepcion} both specifications
-are in a technical tie ($<2\%$ RMSE difference in either direction,
-operationally negligible). This pattern is consistent with the
-idiosyncratic tariff dynamics of the Iberian Exception: the gas-cap
-regime introduces market dynamics that cannot be learned from
-adjacent regimes. The evidence rules out the strong hypothesis of
-transfer learning dominating across regimes and reinforces the
-relevance of regime-specific models for non-stationary regulatory
-periods. In contrast to the preliminary results referenced in
-earlier project artefacts, the unified pooled model does not enjoy
-the advantage previously attributed to it; that advantage was an
-artefact of the cross-regime leakage in the training set (see Note
-on revised metrics in Section~\ref{sec:results}).
-
-\subsection{Competitive benchmarks}\label{sec:bench-dm}
-
-On the partition train $<$ 2024 $\to$ test 2024 we compare Model A v3
-against five benchmarks: AR(1), AR(24), LASSO with
-\texttt{LassoCV(cv=5)} and feature scaling, persistence
-$\mathrm{spread}_t = \mathrm{spread}_{t-24}$ (M0), and zero level
-(M0b). For each pair (Model A vs benchmark) we report the
-Diebold--Mariano test \citep{Diebold1995} with Newey--West HAC
-variance (Andrews 1991 rule for the lag) under squared-error loss
-and $h = 1$. The 95\% confidence interval on RMSE is computed with
-\emph{circular block-bootstrap} (1000 replicates) and block size
-24~hours, with a sensitivity check at 168~hours.
-
-\begin{table}[H]
-\centering
-\small
-\caption{Table 2 --- Benchmark comparison on the 2024 test set
-($n = 8\,783$). Positive DM stat $\Rightarrow$ Model A
-better. 95\% CI by circular block-bootstrap, 24-hour blocks.}
+\caption{Benchmark comparison on 2024 test set ($n = 8\,783$).
+Positive DM stat $\Rightarrow$ Model A better. 95\% CI by circular
+block-bootstrap, 24-hour blocks.}
 \label{tab:t2}
 \begin{tabular}{lrrrrcr}
 \toprule
-\textbf{Model} & \textbf{RMSE} & \textbf{$R^2$} & \textbf{Recall@ext} & \textbf{95\% CI RMSE} & \textbf{DM vs A} & \textbf{$p$} \\
+\textbf{Model} & \textbf{RMSE} & \textbf{$R^2$} &
+\textbf{Recall@ext} & \textbf{95\% CI RMSE} &
+\textbf{DM vs A} & \textbf{$p$} \\
 \midrule
-Model\_A\_v3 (XGBoost) & \textbf{3{,}218} & \textbf{0{,}539} & \textbf{0{,}635} & [2{,}722, 3{,}749] & --- & --- \\
-AR(1)        & 3{,}424 & 0{,}478 & 0{,}602 & [2{,}863, 3{,}986] & $+1{,}77$ & $0{,}0776$ \\
-AR(24)       & 3{,}427 & 0{,}477 & 0{,}632 & [2{,}866, 3{,}981] & $+1{,}87$ & $0{,}0613$ \\
-LASSO        & 3{,}376 & 0{,}492 & 0{,}648 & [2{,}820, 3{,}927] & $+1{,}56$ & $0{,}1182$ \\
-M0 (persist.) & 5{,}756 & $-0{,}476$ & 0{,}250 & [4{,}823, 6{,}755] & $+4{,}86$ & $<10^{-4}$ \\
-M0b (zero)   & 4{,}756 & $-0{,}008$ & 0{,}000 & [3{,}768, 5{,}800] & $+3{,}38$ & $0{,}0007$ \\
+Model\_A\_v3 & \textbf{3.218} & \textbf{0.539} & \textbf{0.635} & [2.722, 3.749] & --- & --- \\
+AR(1)        & 3.424 & 0.478 & 0.602 & [2.863, 3.986] & $+1.77$ & $0.0776$ \\
+AR(24)       & 3.427 & 0.477 & 0.632 & [2.866, 3.981] & $+1.87$ & $0.0613$ \\
+LASSO        & 3.376 & 0.492 & 0.648 & [2.820, 3.927] & $+1.56$ & $0.1182$ \\
+M0 (persist) & 5.756 & $-0.476$ & 0.250 & [4.823, 6.755] & $+4.86$ & $<10^{-4}$ \\
+M0b (zero)   & 4.756 & $-0.008$ & 0.000 & [3.768, 5.800] & $+3.38$ & $0.0007$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\paragraph{Reading.} On squared-error loss, Model A v3 achieves lower
-RMSE than the five benchmarks ($3{,}218$~€/MWh vs
-$3{,}376$--$5{,}756$), but the Diebold--Mariano test against the
-competitive benchmarks AR(1), AR(24) and LASSO does not reach 5\%
-significance ($p \in [0{,}06;\,0{,}12]$); significance is maintained
-only against the naive benchmarks of persistence and zero level
-($p < 10^{-3}$). This non-significance is not a defect of the model
-but a metric-specification consequence: when the relevant loss for
-the surveillance use case is asymmetric and concentrated on the upper
-tail, squared-error loss is not the right testing instrument. The
-Giacomini--White test under pinball loss at $q = 0{,}95$ (next
-paragraph) addresses this directly. $R^2 = 0{,}539$ is below the
-$> 0{,}85$ typical of single zonal-price forecasts
+Model A v3 achieves lower RMSE than all five benchmarks but with DM
+significance \emph{only} against the naive benchmarks
+($p < 10^{-3}$); against AR(1), AR(24) and LASSO the positive DM
+stat does not reach 5\% ($p \in [0.06, 0.12]$). This is not a
+defect of the model under the surveillance use case but a metric
+mismatch: squared-error loss weighs equally a 1 €/MWh error in the
+$95\%$ of hours where the spread is zero and a 5 €/MWh error in the
+tail. The relevant testing instrument for the tail is the pinball
+loss; the next subsection addresses it directly. $R^2 = 0.539$ is
+below the $> 0.85$ typical of single zonal-price forecasts
 \citep{Weron2014} but in line with the lower side of the range
 reported for bilateral spreads \citep{Bunn2016}; the bilateral
 differencing cancels most of the common-factor variance that drives
-high $R^2$ in single-price models. $R^2$ is not the relevant metric
-here, but is reported without ornamentation for comparability.
+high $R^2$ in single-price models.
 
-\paragraph{Quantile companion model and the Giacomini--White
-pinball test.} The pinball loss at $q = 0{,}95$ of Model A v3 on
-the 2024 test set is $0{,}50$, against $0{,}33$ for AR(1) --- the
-mean-error specification is dominated by the autoregressive
-benchmark on the tail metric. The Giacomini--White conditional test
-\citep{Giacomini2006} of equal predictive ability under pinball loss
-at $q = 0{,}95$ rejects in favour of AR(1) (statistic $+15{,}07$,
-$p = 0{,}0005$). This is the expected behaviour: XGBoost minimising
-mean squared error produces predictions concentrated around the
-conditional mean, whereas pinball at $q = 0{,}95$ penalises
-under-predictions of the upper tail asymmetrically (ratio
-$q/(1-q) = 19$); a model that targets the conditional mean and a
-model that targets the conditional 95-quantile are not commensurable
-on this metric.
+\subsection{Régime-specific models}\label{sec:regime-specific}
 
-To address the tail-prediction question with a correctly specified
-model, we train Model A v4 with the identical feature set
-\texttt{FEATURES\_A\_CLEAN} and only change the XGBoost objective to
-\texttt{reg:quantileerror} with \texttt{quantile\_alpha} $= 0{,}95$.
-On the 2024 test set, Model A v4 achieves a mean pinball loss of
-$0{,}27$ at $q = 0{,}95$ (against $0{,}33$ for AR(1) and $0{,}37$
-for AR(24)); the Giacomini--White conditional test rejects equal
-predictive ability with $p < 10^{-3}$ in favour of Model A v4 against
-both AR benchmarks. The trade-off is an RMSE deterioration to
-$6{,}24$~€/MWh, expected from a quantile regressor that biases
-predictions upward by construction. Model A v4 is reported as the
-econometric companion to A v3: the latter feeds the operational
-cascade because its residuals are centred at zero; the former
-provides the formal evidence that fundamentals carry tail
-information beyond pure autoregression when the model is matched to
-the metric. Implementation is in \texttt{scripts/train\_model\_v4\_
-quantile\_clean.py} and \texttt{scripts/apply\_gw\_to\_residuals.py}.
-
-\paragraph{Calibration of v4-quantile via Kupiec and Christoffersen
-tests.} Beyond mean pinball loss, we evaluate the calibration of the
-$q = 0{,}95$ quantile predictions following the
-``sharpness subject to reliability'' paradigm
-\citep{NowotarskiWeron2018}. The empirical exceedance rate on the
-$8\,783$-hour test set is $5{,}58\%$ against a nominal $5\%$
-(490 exceedances vs 439 expected). The Kupiec (1995)
-unconditional-coverage likelihood-ratio test rejects equality at
-the 5\% level (LR$_{\text{uc}} = 5{,}98$, $p = 0{,}014$), but the
-deviation is small in absolute magnitude ($+0{,}58$ percentage
-points). By contrast, a parametric upper $q = 0{,}95$ derived from
-AR(1) under Gaussian residual assumption produces $1{,}55\%$
-empirical exceedance (LR$_{\text{uc}} = 298{,}3$, $p < 10^{-3}$), a
-catastrophic under-coverage by a factor of three driven by the
-heavy-tailed nature of the residual distribution that normality
-fails to capture. The Christoffersen (1998) independence test rejects
-in both cases (LR$_{\text{ind}} = 764{,}6$ for v4-quantile, $190{,}9$
-for AR(1)-parametric): exceedances cluster in time, consistent with
-the known persistence of congestion episodes in electricity-spread
-series. The joint conditional-coverage test is therefore rejected
-for both specifications. The reading is methodological: v4-quantile
-is approximately but not exactly calibrated and inherits the
-clustering that any single-state model would inherit on this series;
-the parametric Gaussian alternative does not even achieve approximate
-coverage. Implementation in
-\texttt{scripts/kupiec\_christoffersen\_test.py}; results in
-\texttt{results/kupiec\_christoffersen\_results.txt}.
-
-\paragraph{LASSO-Regularized Quantile Regression Averaging (LQRA).}
-Following \citet{UniejewskiWeron2021} we evaluate whether combining
-multiple point forecasts via $L_1$-regularized quantile regression
-improves over the best single-model forecast. The five inputs are the
-point predictions of v3-mean (XGBoost MSE), AR(1), AR(24), LASSO and
-the decomposed forecast (XGBoost on \texttt{price\_es} minus XGBoost
-on \texttt{price\_fr}). For each target quantile $q$, a separate
-\texttt{QuantileRegressor} with $L_1$ penalty is fit on the first
-half of the 2024 test set and evaluated on the second half; the
-regularization strength is selected by minimizing pinball loss on a
-20\% inner hold-out of the training half. Results
-(\texttt{results/lqra\_results.csv}) show that LQRA reduces pinball
-loss against the best single forecast at
-$q \in \{0{,}05;\,0{,}25;\,0{,}50;\,0{,}95\}$ and ties marginally at
-$q = 0{,}75$; the pinball gain at $q = 0{,}95$ is $-0{,}018$ (LQRA
-$= 0{,}304$ vs best single AR(1) $= 0{,}322$). The
-LASSO-selected coefficients (\texttt{results/lqra\_coefficients.csv})
-expose the regime-dependent informativeness of each predictor: at the
-bulk quantiles ($q = 0{,}25,\,0{,}50,\,0{,}75$) only AR(1) survives
-the $L_1$ penalty with coefficient $0{,}45$--$0{,}88$, while at
-$q = 0{,}95$ the full ensemble is active (v3-mean $= 0{,}38$,
-AR(1) $= 0{,}34$, LASSO $= 0{,}37$, decomposed $= 0{,}15$,
-AR(24) $= -0{,}12$). This is informative: the bulk of the spread
-distribution is dominated by autoregressive persistence; the upper
-tail requires fundamentals to be discriminated. LQRA's $q = 0{,}95$
-pinball ($0{,}30$) is, however, worse than the dedicated v4-quantile
-model applied at the same quantile on the full 2024 test ($0{,}27$):
-a non-linear, quantile-loss-optimized XGBoost remains preferable for
-a specific tail quantile, but LQRA provides a coherent
-probabilistic-forecast framework when the full predictive
-distribution is needed. Coverage is universally below nominal --- the
-LQRA inputs are conservative point forecasts of the conditional mean
-and the ensemble inherits that conservatism, a known limitation of
-pinball-minimizing ensembles without explicit calibration
-constraints.
-
-\paragraph{Cross-year robustness.} The main results above use a
-single train/test split (2019--2023 training, 2024 testing). To check
-whether the v4-quantile advantage over AR(1) is robust to the choice
-of test year we re-run the pipeline on three rolling-origin folds:
-training 2019--2021 / test 2022, training 2019--2022 / test 2023, and
-the default training 2019--2023 / test 2024. Table~\ref{tab:cv-years}
-reports the result.
+A natural alternative to a single pooled model is one regression per
+regulatory regime. We train régime-specific Models A on the same
+\texttt{FEATURES\_A\_CLEAN} restricted to each
+\texttt{regime} subset, with the same XGBoost hyperparameters, and
+compare against the unified pooled model on a regime-by-regime basis
+in the held-out periods (Table~\ref{tab:t3}).
 
 \begin{table}[H]
 \centering
 \small
-\caption{Cross-year robustness. RMSE and pinball at $q = 0{,}95$
-across three rolling-origin folds; GW conditional pinball $p$-value
-for v4-quantile vs AR(1).}
+\caption{Régime-specific vs unified pooled comparison
+(\texttt{results/regime\_specific\_metrics.csv}).}
+\label{tab:t3}
+\begin{tabular}{llrrrrr}
+\toprule
+\textbf{Regime} & \textbf{Spec.} & \textbf{n} & \textbf{RMSE} &
+\textbf{MAE} & \textbf{$R^2$} & \textbf{Recall@ext} \\
+\midrule
+pre\_crisis        & regime\_specific & 5\,251 & 1.654 & 0.360 & 0.258 & 0.525 \\
+pre\_crisis        & unified          & 5\,251 & 1.681 & 0.371 & 0.241 & 0.515 \\
+crisis\_y\_excepc. & regime\_specific & 3\,499 & \textbf{2.918} & 0.526 & \textbf{0.425} & 0.438 \\
+crisis\_y\_excepc. & unified          & 3\,499 & 3.565 & 0.643 & 0.142 & 0.469 \\
+post\_excepcion    & regime\_specific & 1\,757 & 2.295 & 0.505 & 0.203 & 0.500 \\
+post\_excepcion    & unified          & 1\,757 & \textbf{2.261} & 0.646 & \textbf{0.226} & 0.523 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The régime-specific specification outperforms the unified pool by an
+ample margin in \texttt{crisis\_y\_excepcion} ($-18.1\%$ RMSE,
+$R^2$ from $0.14$ to $0.42$) and is in technical tie in
+\texttt{pre\_crisis} and \texttt{post\_excepcion} ($< 2\%$ RMSE in
+either direction). The evidence rejects the strong hypothesis of
+dominant transfer learning across regimes and supports régime-
+specific calibration in non-stationary regulatory periods.
+
+\subsection{Quantile companion and the Giacomini--White pinball
+test}\label{sec:gw-pinball}
+
+The mean-error specification predicts the conditional expectation;
+pinball loss at $q = 0.95$ targets the conditional 95-quantile.
+These are distinct estimands, and a model trained on the first is
+expected to underperform on the second. We verify this directly:
+on the 2024 test, Model A v3 has mean pinball loss
+$0.50$ at $q = 0.95$ versus $0.33$ for AR(1); the Giacomini--White
+conditional pinball test \citep{Giacomini2006} rejects equality in
+favour of AR(1) with statistic $+15.07$ ($p = 5 \times 10^{-4}$).
+
+A quantile companion --- Model A v4, same XGBoost,
+\texttt{objective=reg:quantileerror}, $\alpha = 0.95$, on identical
+\texttt{FEATURES\_A\_CLEAN} --- directly optimises the relevant
+loss. On the 2024 test:
+
+\begin{table}[H]
+\centering
+\small
+\caption{Mean pinball loss at $q = 0.95$ on 2024 test.}
+\begin{tabular}{lr}
+\toprule
+\textbf{Model} & \textbf{Pinball $q = 0.95$} \\
+\midrule
+Model A v4 (quantile) & \textbf{0.232} \\
+AR(1)                  & 0.330 \\
+AR(24)                 & 0.373 \\
+Model A v3 (mean)      & 0.454 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The Giacomini--White conditional test rejects equality of
+predictive ability in favour of A v4 against both AR benchmarks with
+$p < 10^{-3}$. The trade-off is an RMSE deterioration to
+$6.24$ €/MWh, expected from a quantile regressor that biases
+predictions toward the upper tail by construction. The mean and
+quantile specifications are therefore complementary: the mean-error
+model feeds the cascade (residuals centred at zero); the quantile
+model provides the formal econometric evidence on the upper-tail
+question.
+
+\subsection{Calibration: Kupiec and Christoffersen}\label{sec:calibration}
+
+Beyond mean pinball loss, we evaluate the calibration of the
+$q = 0.95$ quantile predictions \citep{NowotarskiWeron2018}. On the
+2024 test the empirical exceedance rate of the v4-quantile
+prediction is $5.58\%$ against a nominal $5\%$ (490 exceedances
+versus 439 expected). The Kupiec (1995) unconditional-coverage LR
+test rejects equality at the 5\% level
+($\mathrm{LR}_{\text{uc}} = 5.98$, $p = 0.014$), but the deviation
+is small in absolute magnitude ($+0.58$ p.p.). By contrast, a
+parametric upper $q = 0.95$ derived from AR(1) under Gaussian
+residual assumption yields $1.55\%$ empirical exceedance
+($\mathrm{LR}_{\text{uc}} = 298.3$, $p < 10^{-3}$), a catastrophic
+under-coverage by a factor of three driven by the heavy-tailed
+nature of the residuals
+(skewness $8.2$, excess kurtosis $154$; see Section~\ref{sec:eda})
+that the normality assumption fails to capture.
+
+Christoffersen's (1998) LR independence test rejects independence
+of exceedances in both cases ($\mathrm{LR}_{\text{ind}} = 764.6$ for
+v4-quantile, $190.9$ for AR(1)-parametric). Exceedances cluster in
+time, consistent with the persistence of congestion episodes
+documented in Section~\ref{sec:dgp}. The joint
+conditional-coverage test is therefore rejected for both
+specifications. The reading is methodological: v4-quantile is
+approximately but not exactly calibrated and inherits the clustering
+that any single-state model would inherit on this series; the
+parametric Gaussian alternative does not even achieve approximate
+coverage.
+
+\subsection{LASSO-Regularized Quantile Regression Averaging
+(LQRA)}\label{sec:lqra}
+
+Following \citet{UniejewskiWeron2021} we combine multiple point
+forecasts into a probabilistic forecast via $L_1$-regularized
+quantile regression. The five inputs are v3-mean (XGBoost MSE),
+AR(1), AR(24), LASSO and a decomposed forecast (XGBoost on
+\texttt{price\_es} minus XGBoost on \texttt{price\_fr}). For each
+target quantile $q$, a separate \texttt{QuantileRegressor} with
+$L_1$ penalty is fit on the first half of the 2024 test and
+evaluated on the second half; the regularization strength is
+selected by minimizing pinball loss on a 20\% inner hold-out of the
+training half.
+
+\begin{table}[H]
+\centering
+\small
+\caption{LQRA versus best single point predictor on the
+period-B 2024 hold-out.}
+\label{tab:lqra}
+\begin{tabular}{lrrrl}
+\toprule
+\textbf{$q$} & \textbf{LQRA pinball} & \textbf{Best single}
+& \textbf{$\Delta$} & \textbf{Best single name} \\
+\midrule
+0.05 & 0.056 & 0.272 & $-0.216$ & AR(1) \\
+0.25 & 0.195 & 0.283 & $-0.088$ & AR(1) \\
+0.50 & 0.276 & 0.297 & $-0.021$ & AR(1) \\
+0.75 & 0.317 & 0.311 & $+0.006$ & AR(1) \\
+0.95 & 0.304 & 0.322 & $-0.018$ & AR(1) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+LQRA reduces pinball loss against the best single forecast at four
+of five quantiles. The LASSO-selected coefficients
+(\texttt{results/lqra\_coefficients.csv}) expose the
+regime-dependent informativeness of the inputs: at the bulk quantiles
+($q = 0.25, 0.50, 0.75$) only AR(1) survives the penalty with
+coefficient $0.45$--$0.88$; at $q = 0.95$ the full ensemble is active
+with v3-mean $= 0.38$, AR(1) $= 0.34$, LASSO $= 0.37$, decomposed
+$= 0.15$, AR(24) $= -0.12$ and intercept $= 0.94$. Two readings
+follow. First, the bulk of the spread distribution is autoregressive-
+dominated (AR(1) suffices); the upper tail requires fundamentals to
+be discriminated. Second, the LQRA $q = 0.95$ pinball ($0.30$)
+remains worse than the dedicated v4-quantile model on the full 2024
+test ($0.27$), so a non-linear quantile-loss-optimized XGBoost is
+preferable for a specific tail quantile while LQRA provides the
+coherent probabilistic-forecast framework when the full predictive
+distribution is required. Coverage is universally below nominal:
+inputs to LQRA are conservative point forecasts of the conditional
+mean and the ensemble inherits that conservatism, a known limitation
+of pinball-minimizing ensembles without explicit calibration
+constraints.
+
+\subsection{Cross-year robustness}\label{sec:cross-year}
+
+The default reporting uses a single train/test split
+(2019--2023 training, 2024 testing). We probe robustness with three
+rolling-origin folds:
+
+\begin{table}[H]
+\centering
+\small
+\caption{Cross-year folds. GW $p$-value is the conditional pinball
+test for v4-quantile vs AR(1).}
 \label{tab:cv-years}
-\begin{tabular}{lrrrrrr}
+\begin{tabular}{lrrrrrl}
 \toprule
 \textbf{Test year} & \textbf{RMSE AR(1)} & \textbf{RMSE v4q}
                   & \textbf{Pinball AR(1)} & \textbf{Pinball v4q}
                   & \textbf{GW $p$} & \textbf{Winner $q$=0.95} \\
 \midrule
-2022 & \textbf{3.39} & 5.92 & \textbf{0.264} & 0.373 & $3 \cdot 10^{-4}$ & AR(1) \\
+2022 & \textbf{3.39} & 5.92 & \textbf{0.264} & 0.373 & $3 \times 10^{-4}$ & AR(1) \\
 2023 & 4.50 & 5.97 & 0.543 & \textbf{0.476} & $< 10^{-3}$ & v4-quant \\
 2024 & 3.42 & 5.50 & 0.330 & \textbf{0.234} & $< 10^{-3}$ & v4-quant \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The v4-quantile beats AR(1) in pinball at $q = 0{,}95$ in two of
-three folds; the year it fails (2022) coincides with three concurrent
+The v4-quantile beats AR(1) in pinball at $q = 0.95$ in two of three
+folds; the year it fails (2022) coincides with three concurrent
 extreme-regime drivers --- Russian invasion of Ukraine, French-
 nuclear-fleet availability crisis, entry into force of the Iberian
-Exception (15 June 2022). In a year dominated by structural shocks of
-magnitudes outside the 2019--2021 training distribution, short-horizon
-autoregressive persistence outperforms a quantile model fitted on the
-pre-shock regime; the v4-quantile recovers its advantage in 2023
-(regime stabilised) and 2024 (post-Exception). This qualifies the
-headline result: the v4-quantile's tail-prediction advantage holds
-under stable or moderately-shifting regimes but is not robust to
+Exception. In a year dominated by structural shocks of magnitudes
+outside the 2019--2021 training distribution, short-horizon
+autoregressive persistence outperforms a quantile model fitted on
+the pre-shock regime. The v4-quantile recovers its advantage in 2023
+(regime stabilised) and 2024 (post-Exception). The headline result
+is therefore qualified: the tail-prediction advantage holds under
+stable or moderately-shifting regimes but is not robust to
 first-order structural shocks affecting both the level and the
-conditional volatility of the spread simultaneously. Implementation
-in \texttt{scripts/cross\_year\_validation.py}; results in
-\texttt{results/cross\_year\_validation.csv}.
-
-\subsection{Data audit and residual diagnostics}\label{sec:eda}
-
-A retrospective audit of the master dataset
-(\texttt{scripts/eda\_audit.py},
-\texttt{results/eda\_audit\_report.txt}) confirms the basic
-data-quality conditions and exposes three diagnostic properties of
-the residuals that are material for the interpretation of the
-results.
-
-\paragraph{Sanity checks pass.} The target satisfies
-$\mathrm{spread\_da} = \mathrm{price\_es} - \mathrm{price\_fr}$ to
-numerical precision; no duplicate timestamps; gaps in the hourly
-index correspond to the documented DST transitions; the 9 hours with
-$|\mathrm{spread}| > 100$~€/MWh (out of $52\,530$) are verified
-event-day timestamps (e.g.\ 28 August 2022 morning during the FR
-nuclear-availability trough; 1 May 2023 negative-price episode in
-ES). Negative day-ahead prices in \texttt{price\_es} and
-\texttt{price\_fr} ($0{,}37\%$ and $0{,}47\%$ of observations
-respectively) are real market outcomes during oversupply episodes.
-
-\paragraph{Diagnostic 1: residuals of A v3 have a non-zero mean.}
-On the full 2022--2024 walk-forward residuals
-($n = 26\,277$), the mean is $+0{,}268$~€/MWh
-($t = 9{,}13$, $p < 10^{-3}$ for $H_0:\,\mu = 0$). The point-prediction
-model is systematically biased downward by about a quarter of a
-€/MWh. This bias does not affect the operational alert cascade
-(z-score normalisation absorbs additive shifts), but it does affect
-point-prediction interpretations and is documented here for
-transparency. A simple intercept correction would remove it without
-side effects.
-
-\paragraph{Diagnostic 2: residual autocorrelation is a
-walk-forward concatenation artefact, not a model misspecification.}
-On the concatenated walk-forward residuals
-(\texttt{residuals\_v3.parquet}, three folds stitched together) the
-lag-1 autocorrelation is $0{,}61$ and Ljung--Box on 24 lags rejects
-independence ($p < 10^{-3}$). However, this is not evidence that the
-fundamentals model is misspecified. When a single XGBoost is trained
-on 2019--2023 and its in-sample residuals are evaluated, the lag-1
-autocorrelation is only $-0{,}08$ and an AR$(p)$ fit selects very
-small coefficients (best AIC at $p = 6$ with $\rho_1 = -0{,}08$,
-remaining $|\rho_k| < 0{,}07$). The high autocorrelation reported
-above arises from the concatenation of residuals from three
-separately trained models with different parameter estimates and
-implicitly different intercepts; the discontinuities at the fold
-boundaries inflate the apparent serial correlation of the joined
-series. To verify this empirically, we applied an AR(6) correction
-to the test-set predictions (fit on the training residuals of a
-single 2019--2023 XGBoost):
-
-\[
-\hat{y}_t^{\text{corrected}} = \hat{y}_t^{(v3)} + \mu + \sum_{k=1}^{6}
-\rho_k\,\big(y_{t-k} - \hat{y}_{t-k}^{(v3)}\big).
-\]
-
-The correction \emph{deteriorates} performance: test-set RMSE rises
-from $3{,}411$ to $3{,}580$~€/MWh, with the Diebold--Mariano test
-rejecting equality at $p = 0{,}0001$ in favour of the uncorrected
-baseline. Test residual autocorrelation also worsens
-($0{,}28 \to 0{,}39$). The natural reading is that within each
-walk-forward fold the XGBoost adequately captures the autoregressive
-structure available in the feature lags; an exogenous AR correction
-fitted on training residuals does not generalise to the test fold
-because the residual structure is itself non-stationary across folds.
-Implementation in \texttt{scripts/arma\_correction.py}; results in
-\texttt{results/arma\_correction\_results.csv}.
-
-\paragraph{Diagnostic 3: residuals are heavy-tailed and
-heteroscedastic.} Skewness of the residuals is $8{,}2$, excess
-kurtosis is $154$; the Engle ARCH-LM test on 24 lags rejects
-homoscedasticity with stat $= 12\,008{,}20$ ($p < 10^{-3}$). Two
-methodological consequences follow directly. First, an upper $q
-= 0{,}95$ derived from any model under Gaussian residual assumption
-will under-cover catastrophically; this is the formal explanation
-for the Kupiec failure of the AR(1)-parametric upper bound
-(empirical exceedance $1{,}55\%$ vs nominal $5\%$, see
-Section~\ref{sec:bench-dm}). Second, the régime-specific calibration
-of percentile thresholds in the cascade (Section~\ref{sec:anomalies})
-is justified empirically: the per-regime standard deviation of the
-spread ranges from $1{,}43$~€/MWh (\texttt{pre\_crisis}) to
-$6{,}80$~€/MWh (\texttt{crisis\_y\_excepcion}), a factor of nearly
-five; a single pooled threshold would over-trigger in one regime and
-under-trigger in the other.
+conditional volatility of the spread simultaneously.
 
 \subsection{Feature importance via permutation}\label{sec:perm-imp}
 
 We assess global feature importance with
 \texttt{sklearn.inspection.permutation\_importance} (30 repetitions,
-\texttt{neg\_root\_mean\_squared\_error} scoring) over the 2024 test
-set ($n = 8\,783$). Permutation importance is model-agnostic, depends
-only on the model's \texttt{predict} method, provides native
-confidence intervals via the standard deviation of repetitions, and
-is interpretable to non-ML audiences as the increase in out-of-sample
-RMSE caused by destroying a feature's signal.
+\texttt{neg\_root\_mean\_squared\_error} scoring) on the 2024 test.
+Permutation importance is model-agnostic, depends only on
+\texttt{predict}, and provides native confidence intervals via the
+standard deviation of repetitions. It is reported instead of SHAP
+because of a documented incompatibility between
+\texttt{shap}~0.48 and \texttt{xgboost}~3.2 in the JSON model loader
+(SHAP issue \#4184, resolved upstream in \texttt{shap}~0.49.1
+via PR~\#4187).
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.95\linewidth]{permutation_importance_global.png}
-\caption{Global permutation importance of Model A v3 on test 2024
-($n = 8\,783$). Error bars are $\pm 1$ standard deviation over 30
-permutations.}
+\caption{Global permutation importance of Model A v3 on the 2024
+test ($n = 8\,783$). Error bars are $\pm 1$ standard deviation
+over 30 permutations.}
 \label{fig:perm-global}
 \end{figure}
 
 The dominant feature is \texttt{spread\_da\_lag1h}
-($\Delta\mathrm{RMSE} = 2{,}18 \pm 0{,}08$~€/MWh), followed by the
-hour-of-day, the spark spread, the 24-hour volatility of the
-residual, and additional spread lags. The ranking is consistent with
-the electricity-price-forecasting literature
-\citep{Weron2014, Lago2021}: the spread is a strongly autocorrelated
-process at short horizons, and information from fundamentals
-(\texttt{ttf\_eur\_mwh}, \texttt{co2\_eur\_t}, \texttt{spark\_spread})
-reaches the prediction partially filtered through lags and the
-calendar features.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.95\linewidth]{permutation_importance_boxplot.png}
-\caption{Distribution of permutation importance for the top-10
-features over 30 repetitions. Narrow boxes indicate stable
-attribution; wider boxes indicate a noisier estimate of feature
-contribution.}
-\label{fig:perm-boxplot}
-\end{figure}
-
-\paragraph{Reading under multicollinearity.} Permutation importance
-distributes signal across correlated feature clusters. The correlation
-matrix of the top 10 features
-(\texttt{results/permutation\_top10\_correlations.csv}) shows
+($\Delta\mathrm{RMSE} = 2.18 \pm 0.08$~€/MWh), followed by hour of
+day, spark spread, the 24-hour volatility of the residual, and
+further spread lags. The correlation matrix
+(\texttt{results/permutation\_top10\_correlations.csv}) reveals
 near-perfect collinearity between \texttt{spark\_spread} and
-\texttt{clean\_spark\_spread} ($\rho = 0{,}999$), and high
-collinearity between \texttt{ttf\_lag168h} and \texttt{ttf\_eur\_mwh}
-($\rho = 0{,}940$); the moderate correlation
-$\rho(\texttt{spread\_da\_lag1h}, \texttt{spread\_da\_lag2h}) =
-0{,}700$ explains why \texttt{spread\_da\_lag1h} alone absorbs the
-short-lag information. The importance figures should be read at the
-\emph{cluster} level (lags, fuel costs, capacity, calendar) rather
-than feature-by-feature \citep{Lago2021}.
+\texttt{clean\_spark\_spread} ($\rho = 0.999$) and high collinearity
+between \texttt{ttf\_lag168h} and \texttt{ttf\_eur\_mwh}
+($\rho = 0.940$). Permutation importance distributes the signal
+across correlated clusters; the figures should therefore be read at
+cluster granularity (lags, fuel costs, capacity, calendar) rather
+than feature-by-feature.
 
 % =====================================================================
-\section{Surveillance system and external validation}
+\section{Operational validation}\label{sec:operational}
 % =====================================================================
 
-\subsection{Anomaly detection --- operational definition}\label{sec:anomalies}
+\subsection{Pre-specified event panel}\label{sec:panel}
 
-The residuals of Model A v3 feed the detection module. For each hour
-$t$ the residual is normalised through a 168-hour \emph{rolling
-z-score} with mandatory \texttt{shift(1)}, eliminating any possibility
-of forward information leakage:
-\[
-z_t = \frac{r_t - \mu_{t-168 : t-1}}{\sigma_{t-168 : t-1}}.
-\]
-A numerical floor on the rolling standard deviation (10\% of the
-global $\sigma$) and a symmetric clip on $z_t$ at $\pm 10$ prevent
-artefactual amplification in low-volatility regimes; the share of
-observations affected by either safeguard is reported in the audit
-log.
-
-\paragraph{Thresholds by regime.} The reference percentiles
-($p_{90}$, $p_{95}$, $p_{99}$) are computed exclusively over the
-\textbf{first 50\% temporal half of each regime} (training set).
-This choice avoids look-ahead: the thresholds are fixed from the
-early half of the regime and applied to the later period. The
-estimated values are:
-
-\begin{table}[H]
-\centering
-\small
-\caption{$|z|$ thresholds calibrated on the first 50\% temporal half
-of each regime.}
-\label{tab:thresholds}
-\begin{tabular}{lrrrr}
-\toprule
-\textbf{Regime} & \textbf{$p_{90}$} & \textbf{$p_{95}$} & \textbf{$p_{99}$} & \textbf{$n_\text{train}$} \\
-\midrule
-crisis\_y\_excepcion & 0{,}327 & 0{,}604 & 5{,}738 & 8\,705 \\
-post\_excepcion      & 0{,}389 & 1{,}393 & 6{,}123 & 4\,349 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-(The \texttt{pre\_crisis} regime has no out-of-sample residuals by
-construction of the expanding-window scheme and is reserved as
-training data.)
-
-\paragraph{Alert cascade.} The classification combines three
-independent signals: the magnitude of the normalised residual ($|z|$),
-multivariate statistical anomaly (Isolation Forest with régime-trained
-percentile $p_{95}^{\mathrm{IF}} = 0{,}608$), and temporal persistence
-(bilateral CUSUM with $\sigma$ estimated on the training set).
-
-\begin{table}[H]
-\centering
-\small
-\caption{Operational rules of the alert cascade.}
-\label{tab:cascade}
-\begin{tabular}{ll}
-\toprule
-\textbf{Level} & \textbf{Operational rule} \\
-\midrule
-Green   & $|z_t| < p_{90}$ \emph{and} IF\_score $< p_{95}$ \\
-Amber   & $p_{90} \leq |z_t| < p_{95}$ \emph{or} IF\_score $\geq p_{95}$ \\
-Orange  & $|z_t| \geq p_{95}$ \emph{and} (IF\_score $\geq p_{95}$ \emph{or} CUSUM active) \\
-Red     & $|z_t| \geq p_{99}$ \emph{and} IF\_score $\geq p_{95}$ \emph{and} CUSUM persistent $\geq 3$h \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The Red level requires the simultaneous confirmation of three
-independent criteria. Each classification is recorded with
-\texttt{(timestamp, $z_t$, if\_score, cusum\_state, level)} for full
-auditability.
-
-\paragraph{Table~\ref{tab:t4}: distribution of alerts.} Alerts are
-computed over the hours with available out-of-sample prediction
-(approximately $26\,277$~hours, 2022--2024). The 2019--2021 period
-is exclusively training and by construction does not produce alerts;
-any reference to ``2019--2024 alerts'' should be read as ``alerts in
-the sub-period with out-of-sample prediction''.
-
-\begin{table}[H]
-\centering
-\small
-\caption{Table 4 --- Distribution of alerts (Model A v3, cascade v3).}
-\label{tab:t4}
-\begin{tabular}{lrr}
-\toprule
-\textbf{Level} & \textbf{Hours} & \textbf{\% of classified} \\
-\midrule
-Green   & 23\,358 & 88{,}89 \\
-Amber   &  2\,168 &  8{,}25 \\
-Orange  &     690 &  2{,}63 \\
-Red     &      61 &  0{,}23 \\
-\midrule
-\textbf{Total classified} & \textbf{26\,277} & \textbf{100{,}00} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.95\linewidth]{06_anomaly_detection_v3.png}
-\caption{Anomaly detection on the residuals of Model A v3.}
-\label{fig:anomaly-detection}
-\end{figure}
+The panel contains 40 documented ES--FR congestion-related events
+2019--2024 with date range, type and magnitude. It is curated from
+CNMC bulletins, OMIE annual reports, REE operational notes and RTE
+\emph{Bilan Électrique}, with explicit citation per event in
+\texttt{data/events\_panel.csv}. Of the 40, 24 fall within the
+alert window 2022--2024 (the period for which the system produces
+out-of-sample residuals); the remaining 16 are pre-2022 and are
+marked \texttt{out\_of\_alert\_window} in the validation file.
 
 \subsection{Three illustrative episodes}\label{sec:illustrative}
 
-For qualitative purposes, three Red-alert episodes are contrasted
-against documented events:
+\begin{itemize}
+\item \textbf{July 2023 heat wave} (seven Red Alerts recorded):
+spike in Iberian demand for cooling coinciding with low
+French-nuclear availability; the residual exceeds the
+post\_excepcion $p_{99}$ for multiple non-contiguous hours, and the
+cascade fires Red repeatedly.
+\item \textbf{1 May 2023}: residual $\approx 97.4$ €/MWh in the
+context of a holiday in ES coincident with high renewable
+generation and the gas-cap regime \citep{OMIE2023}. Single-hour
+Red Alert.
+\item \textbf{2022-08-28 morning}: an Orange/Red Alert sequence
+during a low point in the FR nuclear fleet
+\citep{RTE2023}; ES exports at the maximum NTC and FR clears
+substantially higher than ES.
+\end{itemize}
 
-\begin{enumerate}
-\item \textbf{28 August 2022} (residual $\approx 59{,}4$~€/MWh):
-historical minimum of French nuclear generation since 1992
-\citep{RTE2023}; Spain exports at the maximum interconnection
-capacity, amplified by the Iberian Exception.
+\subsection{Systematic validation against the panel}\label{sec:event-validation}
 
-\item \textbf{1 May 2023} (residual $\approx 97{,}4$~€/MWh):
-national holiday with minimum demand in Spain, high renewable
-generation, active gas-cap regime \citep{OMIE2023}.
-
-\item \textbf{July 2023} (seven Red Alerts recorded):
-European heat wave, cooling demand in France, contained prices in
-Spain \citep{CNMC2024}.
-\end{enumerate}
-
-These three episodes illustrate the system's response to high-profile
-documented events. The systematic validation against the complete
-event panel is reported in Section~\ref{sec:event-validation}.
-
-\subsection{Systematic validation against the event panel}\label{sec:event-validation}
-
-To avoid the \emph{post-hoc} bias inherent in the manual selection of
-episodes, we construct a pre-specified panel of 40 verified events
-from the Iberian--European electricity market between 2019 and 2024,
-coded by type (\texttt{MERCADO}, \texttt{INFRAESTRUCTURA},
-\texttt{CLIMATICO}, \texttt{REGULATORIO}, \texttt{LABORAL},
-\texttt{GEOPOLITICO}), magnitude (LOW/MEDIUM/HIGH/VERY HIGH),
-direction of impact and primary sources.
-
-\paragraph{Panel design.} The panel is \emph{structural} by design:
-event metadata are encoded as categorical codes
-(\texttt{event\_type}, \texttt{magnitude\_indicator},
-\texttt{direction\_impact}) rather than free-text descriptions. The
-\texttt{event\_name} and \texttt{description\_es} fields are
-intentionally left blank or coded with the event identifier to
-ensure reproducible categorisation and to prevent ambiguity in
-event classification.
-
-\paragraph{Operational definition.} An event is considered
-\textbf{detected} if at least one hour within
-$[\text{date\_start}, \text{date\_end}]$ produces an Orange or Red
-alert from the system. As a baseline benchmark, we compare against a
-naive rule: alert if $|\mathrm{spread}_\text{DA}| > p_{99}$ of the
-corresponding regime (computed over the full regime).
-
-\paragraph{Coverage.} Of the 40 panel events, $24$ fall fully or
-partially within the alert window (2022--2024); the $16$ events of
-2019--2021 are out-of-window by construction of the expanding-window
-scheme.
+For each in-window event, the system is recorded as detecting it if
+$\geq 1$ Orange or Red alert fires within the event's
+\texttt{[date\_start, date\_end]} window. Table~\ref{tab:t7}
+reports the system--naive comparison on the 24 in-window events.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Table 5 --- Recall by magnitude (in-window events 2022--2024).}
-\label{tab:t5}
-\begin{tabular}{lrrrrr}
-\toprule
-\textbf{Magnitude} & \textbf{Total} & \textbf{In-window} & \textbf{Detected} & \textbf{System recall} & \textbf{Naive recall} \\
-\midrule
-VERY HIGH & 14 & 8 & 7 & \textbf{0{,}875} & 0{,}750 \\
-HIGH      & 16 & 9 & 6 & 0{,}667 & 0{,}667 \\
-MEDIUM    &  9 & 6 & 6 & \textbf{1{,}000} & 0{,}833 \\
-LOW       &  1 & 1 & 1 & 1{,}000 & 1{,}000 \\
-\midrule
-\textbf{Total} & 40 & 24 & 20 & \textbf{0{,}833} & 0{,}750 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{table}[H]
-\centering
-\small
-\caption{Table 6 --- Recall by event type (in-window).}
-\label{tab:t6}
-\begin{tabular}{lrrrrr}
-\toprule
-\textbf{Type} & \textbf{Total} & \textbf{In-window} & \textbf{Detected} & \textbf{System recall} & \textbf{Naive recall} \\
-\midrule
-MERCADO         & 22 & 13 & 11 & \textbf{0{,}846} & 0{,}692 \\
-INFRAESTRUCTURA &  6 &  4 &  4 & 1{,}000 & 1{,}000 \\
-CLIMATICO       &  5 &  2 &  2 & 1{,}000 & 1{,}000 \\
-REGULATORIO     &  4 &  2 &  1 & 0{,}500 & 0{,}500 \\
-LABORAL         &  2 &  2 &  2 & 1{,}000 & 1{,}000 \\
-GEOPOLITICO     &  1 &  1 &  0 & 0{,}000 & 0{,}000 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{table}[H]
-\centering
-\small
-\caption{Table 7 --- System (cascade v3) vs naive benchmark
-($|\mathrm{spread}| > p_{99}$ regime). Detection overlap over 24
-in-window events.}
+\caption{System (cascade v3) vs naive benchmark
+$|\mathrm{spread}| > p_{99}^{\text{regime}}$. Detection overlap
+over 24 in-window events.}
 \label{tab:t7}
 \begin{tabular}{lrr}
 \toprule
 \textbf{Category} & \textbf{System v3} & \textbf{Naive $p_{99}$} \\
 \midrule
-Detections (in-window)         & 20 & 18 \\
-Recall global (in-window)        & \textbf{0{,}833} & 0{,}750 \\
-\midrule
-\textbf{Overlap}                 & \multicolumn{2}{c}{$n$} \\
+Detections (in-window)   & 20 & 18 \\
+Recall global (in-window) & \textbf{0.833} & 0.750 \\
 \midrule
 Both detect                      & \multicolumn{2}{c}{18} \\
 Only system                      & \multicolumn{2}{c}{2} \\
@@ -1055,107 +865,52 @@ Neither                          & \multicolumn{2}{c}{4} \\
 \end{tabular}
 \end{table}
 
-\paragraph{Honest reading.} The system detects $20/24$ in-window
-events ($0{,}833$) against $18/24$ for the naive benchmark
-calibrated on the full régime ($0{,}750$). The system \emph{never
-misses an event detected by the naive benchmark}: it adds two
-detections that the naive misses without losing any. The paired
-McNemar test does not reach 5\% significance ($n = 24$, asymmetry
-$2$ vs $0$, $p = 0{,}500$); the Wilson CI95\% for the system recall
-is $[0{,}641;\, 0{,}933]$ and for the naive benchmark
-$[0{,}551;\, 0{,}880]$, and the intervals overlap substantially.
-Crucially, the naive comparison is sensitive to the calibration of
-the threshold: an alternative régime-specific $p_{99}$ calibrated
-on the first 50\% of each régime (rather than on the full régime,
-which contains look-ahead) reaches recall $0{,}875$ on the same
-panel (variant \texttt{V\_naive\_spread\_p99} in
+The system detects 20 of 24 in-window events; the naive
+$|\mathrm{spread}| > p_{99}^{\text{regime}}$ benchmark detects 18 of
+24 with the full-regime $p_{99}$ calibration (this paper's standard
+reading). The system never misses an event detected by the naive
+benchmark. With $n = 24$ the paired McNemar test does not reach 5\%
+($p = 0.500$); the Wilson 95\% CI for system recall is
+$[0.641, 0.933]$ and overlaps substantially with the naive's
+$[0.551, 0.880]$. The naive benchmark is sensitive to its
+calibration: an alternative train-only $p_{99}$ on the first 50\% of
+each regime achieves recall $0.875$ on the same panel (variant
+\texttt{V\_naive\_spread\_p99} in
 \texttt{results/ablation\_lag\_components.csv}), at the price of a
 substantially higher false-positive rate and without the
-calibratable alert hierarchy. The cautious conclusion is therefore
-not that the cascade improves \emph{raw recall} over a competent
-naive --- it does not, in a clean apples-to-apples comparison --- but
-that the cascade provides a structured Green/Amber/Orange/Red
-hierarchy with an explicit precision--coverage Pareto frontier
-(Section~\ref{sec:opcal}) that a single-threshold benchmark cannot
-deliver. The statistical power of the current 40-event panel is too
-low to claim formal dominance on any single recall metric.
+calibratable alert hierarchy of the cascade.
 
-\paragraph{Additional operational metrics.} Beyond detection
-parity, the system is characterised by precision and lead-time
-metrics that quantify its operational utility:
-\begin{itemize}
-\item \textit{Precision@72h} (alerts within $\pm 72$~hours of a
-documented event centre): $0{,}148$.
-\item \textit{Precision@7d}: $0{,}205$.
-\item \textit{Precision@30d}: $0{,}783$.
-\item \textit{False-positive rate per month outside $\pm 72$~h}:
-$17{,}9$ alerts/month.
-\item \textit{Recall within 24h} of event onset: $0{,}167$.
-\item \textit{Recall within 48h}: $0{,}208$.
-\item \textit{Recall within 168h} (one week): $0{,}417$.
-\item \textit{Median lag} between event onset and first alert:
-$180$~h ($\approx 7{,}5$ days).
-\item \textit{75th percentile lag}: $313$~h ($\approx 13$ days).
-\end{itemize}
+The cautious conclusion is therefore not that the cascade improves
+\emph{raw recall} over a competent naive benchmark --- it does not
+in a clean apples-to-apples comparison --- but that the cascade
+provides a structured Green/Amber/Orange/Red hierarchy with an
+explicit precision--coverage Pareto frontier (next section) that a
+single-threshold benchmark cannot deliver.
 
-The median lag of 180~hours indicates that the system functions as a
-retrospective filter rather than as an operational early-alert
-mechanism. Only 21\% of detected events are captured in the first
-48 hours of the documented onset. This is an operationally relevant
-limitation for REMIT~II surveillance that requires early action.
+\paragraph{Operational metrics.} Beyond detection parity, the
+system is characterised by:
+precision@72h $= 0.148$; precision@7d $= 0.205$;
+precision@30d $= 0.783$; FPR $= 17.9$ alerts/month outside
+$\pm 72$h; recall within 24h $= 0.167$; recall within 168h
+$= 0.417$; median lag from event onset to first system alert
+$= 180$h ($\approx 7.5$ days); 75th percentile lag $= 313$h. The
+system functions as retrospective surveillance and forensic
+screening rather than real-time alerting; the lag is consistent with
+the day-ahead nature of the market (daily auction) and the
+structural duration of detected episodes (heat waves, regulatory
+shocks, and generation restrictions develop over days or weeks).
 
-\paragraph{Failure analysis.} The four VERY HIGH / HIGH in-window
-events that the system misses are:
-
-\begin{itemize}
-\item \textbf{EVT019 (VERY HIGH, GEOPOLITICAL)} --- Russian invasion
-of Ukraine: a global, persistent energy shock that enters the
-\texttt{crisis\_y\_excepcion} regime from its start; the model
-absorbs the new level through lags and produces no alert because the
-residual has already stabilised by the time the regime begins.
-\item \textbf{EVT033 (HIGH, REGULATORY)} --- End of the Iberian
-Exception: a convergence expected by the model's construction. The
-system is designed to detect \emph{divergence} from the expected
-behaviour; the post-Exception convergence is consistent with the
-fundamentals and should not trigger an alert. This is a
-\emph{correct miss}: the event is real but is not an anomaly in the
-residual sense.
-\item \textbf{EVT035 / EVT036 (HIGH, MARKET)} --- Sporadic negative
-prices in Spain (1 April 2024 and 20 April 2024): affect the
-absolute price but not necessarily the bilateral spread if France
-moves in the same direction.
-\end{itemize}
-
-\paragraph{Limitation of the panel.} With $n = 40$ events over six
-years (24 in-window), statistical power is limited for rare
-magnitudes (LOW with $n = 1$ does not permit inference). A natural
-extension is to expand the panel with REE/ESIOS incident codes and
-CNMC technical notes encoded at hourly granularity.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.95\linewidth]{event_validation.png}
-\caption{Systematic validation against the 40-event panel.}
-\label{fig:event-validation}
-\end{figure}
-
-% =====================================================================
-\section{Operational calibration: precision-coverage trade-off}\label{sec:opcal}
-% =====================================================================
+\subsection{Pareto calibration}\label{sec:pareto}
 
 Beyond a single fixed operating point, the cascade admits
-recalibration to the analytical capacity of the regulator. We
-construct a grid of 100 threshold combinations (5 z-score
-régime-specific percentiles $\times$ 5 IsolationForest percentiles
-$\times$ 4 CUSUM persistence thresholds, all computed out-of-sample
-on the training fraction) and evaluate each configuration on four
-metrics: monthly alert volume, precision@72h, recall@event, and the
-false-positive rate outside the 72-hour window around documented
-event centres. The resulting Pareto frontier
-(Figure~\ref{fig:pareto}) exhibits a clear elbow at approximately
-4--5 alerts per month: configurations below this volume lose
-coverage substantially, while configurations above dilute precision
-without recovering recall.
+recalibration to the analytical capacity of the regulator. We build
+a grid of 100 threshold combinations
+(5 $z$-score régime-specific percentiles
+$\times$ 5 IsolationForest percentiles
+$\times$ 4 CUSUM persistence thresholds, all OOS-trained) and
+evaluate each configuration on four metrics: monthly alert volume,
+precision@72h, recall@event, and FPR outside the 72-hour window
+around documented event centres.
 
 \begin{table}[H]
 \centering
@@ -1165,383 +920,339 @@ from the OOS grid plus the current in-sample operating point.}
 \label{tab:opcal}
 \begin{tabular}{lcccccc}
 \toprule
-\textbf{Capacity} & \textbf{Alerts/mo.} & \textbf{$z$-thr.} & \textbf{IF-thr.} & \textbf{CUSUM} & \textbf{Recall@event} & \textbf{Precision@72h} \\
+\textbf{Capacity} & \textbf{Alerts/mo.} & \textbf{$z$-thr.} &
+\textbf{IF-thr.} & \textbf{CUSUM} &
+\textbf{Recall@event} & \textbf{Prec.@72h} \\
 \midrule
-Very low                  & 2{,}1 & $p_{99{.}5}$ & $p_{90}$ & $\geq 1$h & 0{,}833 & 0{,}182 \\
-\textbf{Low (elbow)}      & \textbf{4{,}3} & $p_{99}$    & $p_{90}$ & $\geq 1$h & \textbf{0{,}833} & \textbf{0{,}212} \\
-Medium                    & 12{,}2 & $p_{97}$   & $p_{80}$ & $\geq 1$h & 0{,}833 & 0{,}169 \\
-High                      & 19{,}7 & $p_{93}$   & $p_{80}$ & $\geq 1$h & 0{,}833 & 0{,}168 \\
+Very low                  & 2.1 & $p_{99.5}$ & $p_{90}$ & $\geq 1$h & 0.833 & 0.182 \\
+\textbf{Low (elbow)}      & \textbf{4.3} & $p_{99}$    & $p_{90}$ & $\geq 1$h & \textbf{0.833} & \textbf{0.212} \\
+Medium                    & 12.2 & $p_{97}$   & $p_{80}$ & $\geq 1$h & 0.833 & 0.169 \\
+High                      & 19.7 & $p_{93}$   & $p_{80}$ & $\geq 1$h & 0.833 & 0.168 \\
 \midrule
-Current (in-sample IF)    & 20{,}9 & $p_{99}$ OOS & $p_{95}$ IS global & $\geq 3$h & 0{,}833 & 0{,}148 \\
+Current (in-sample IF)    & 20.9 & $p_{99}$ OOS & $p_{95}$ IS & $\geq 3$h & 0.833 & 0.148 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The system's default operating point (20{,}9 alerts/month,
-precision@72h $= 0{,}148$) lies above the elbow and is dominated by
-the ``Low capacity'' calibration (4{,}3 alerts/month,
-precision@72h $= 0{,}212$): both produce identical coverage
-(recall@event $= 0{,}833$) over the 24 in-window events, but the
-elbow configuration improves precision by 43\% and reduces alert
-volume by a factor of five. A CNMC or ACER analyst with approximately
-2 hours per week of dedicated review capacity could process the
-elbow configuration without coverage loss.
-
-\paragraph{CUSUM persistence and IF in-sample threshold.}
-Two calibration choices contribute to the default's position above
-the elbow: (i) a CUSUM persistence threshold of 3 hours, and (ii) the
-use of an in-sample, regime-pooled IF percentile rather than the
-régime-specific out-of-sample percentile used in the grid. Across all
-canonical operating points selected by the Pareto analysis, the
-dominant CUSUM persistence threshold is 1 hour: configurations
-requiring longer persistence discard alerts that would maintain
-recall without improving precision. We retain CUSUM as a noise
-filter to prevent isolated z-score spikes from triggering alerts,
-but recommend setting minimum persistence to 1 hour rather than 3.
-
-\paragraph{Regulatory positioning.} This calibration is reported as
-guidance for capacity-adjusted deployment rather than as a
-substitute for the default cascade. The system functions as a
-\emph{quantitative screening layer}, not as a regulatory imputation
-mechanism: its output identifies hours warranting investigation by
-analysts with access to additional information (aggregate supply
-curves, operator positions, operational context) outside the scope
-of this work. A Red alert from the system does not constitute
-evidence of market manipulation; it identifies an episode whose
-price dynamics are not explained by the contemporaneous
-fundamentals and whose duration, direction, and persistence merit
-human review.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.95\linewidth]{10_operational_calibration_pareto.png}
-\caption{Pareto frontier of precision @ 72h vs alert volume across
-100 threshold combinations. Lines correspond to different CUSUM
-persistence thresholds (1, 2, 3, 5 hours). The system's current
-operating point (red X marker) lies above the elbow at
-$\sim 4$--$5$ alerts/month. Canonical operating points for four
-capacity bands are labeled (Very low, Low/elbow, Medium, High).}
-\label{fig:pareto}
-\end{figure}
+The system's default operating point (20.9 alerts/month,
+precision@72h $= 0.148$) is dominated by the elbow configuration
+(4.3 alerts/month, precision@72h $= 0.212$): same recall at five
+times lower alert volume and 43\% higher precision. A CNMC or ACER
+analyst with about 2 hours per week of dedicated review capacity
+could process the elbow without coverage loss.
 
 % =====================================================================
-\section{Limitations}\label{sec:limitations}
+\section{Empirical limits of ex-ante prediction}\label{sec:limits}
 % =====================================================================
 
-\paragraph{Coverage of the alert system.} The
-Green/Amber/Orange/Red cascade is computed over the out-of-sample
-residuals of the expanding-window scheme, which limits the
-operational window to the 2022--2024 period
-($\sim 26\,000$~hours). The 2019--2021 period is exclusively
-training and by construction does not produce alerts; a
-qualitatively analogous validation over that sub-period would
-require a block-wise temporal cross-validation strategy.
+The cascade is forensic by design: the median 180h lag means the
+system flags events one week after onset, well within REMIT II's
+four-week notification window but far from real-time alerting. We
+report here the experiments and pre-registered hypothesis tests that
+characterise the empirical ceiling for ex-ante prediction with open
+hourly DA data, and the implications for any successor system.
 
-\paragraph{Statistical power of the event panel.} With $n = 40$
-verified events over six years (24 in-window), the asymmetry of the
-McNemar test between the system and the naive benchmark does not
-reach 5\% significance. Expansion to denser panels (REE/ESIOS
-incident codes and CNMC technical notes at hourly granularity) is
-the natural path to give formal power to the finding.
+\subsection{Lag decomposition (9-variant ablation)}\label{sec:lag-ablation}
 
-\paragraph{Benchmark coverage.} The reported benchmarks cover simple
-autoregressive models (AR(1), AR(24)) and regularised linear models
-(LASSO). Models with explicit seasonality (SARIMA with daily and
-weekly components) are not included in this version; similar
-behaviour is expected given that the seasonal components are captured
-implicitly via the calendar features in the main model.
-
-\paragraph{Data sources for fundamentals.} The use of
-\texttt{yfinance} for TTF and EUA is practical but does not
-constitute a primary regulatory source. A serious operational
-deployment would require a subscription to Euronext/EEX (TTF) or ICE
-Endex (EUA).
-
-\paragraph{Feature importance under multicollinearity.} Permutation
-importance distributes attribution across correlated feature
-clusters; the system contains near-perfect collinearity within the
-fuel-cost cluster (\texttt{spark\_spread} $\approx$
-\texttt{clean\_spark\_spread}) and within the gas cluster
-(\texttt{ttf\_eur\_mwh} $\approx$ \texttt{ttf\_lag168h}). Importance
-figures in Section~\ref{sec:perm-imp} should therefore be read at
-cluster granularity rather than feature-by-feature. The same caveat
-would apply to any importance method, including SHAP, under the
-present correlation structure \citep{Lago2021}.
-
-\paragraph{Regime dating.} The \texttt{crisis\_y\_excepcion} regime
-aggregates January--14 June 2022 (crisis without cap) and 15 June
-2022--31 December 2023 (Iberian Exception) for sample-size reasons.
-Formal regime-switching models (Markov-switching) on the exact date
-of Royal Decree-Law~10/2022 are a natural extension but require
-additional sample size in each sub-regime.
-
-\paragraph{Lead time of detection.} The median lag between the
-documented event onset and the first system alert is approximately
-$7{,}5$ days ($180$~h), with the 75th percentile at $13$ days
-($313$~h). Only 21\% of in-window events are detected within 48
-hours and 17\% within 24 hours. This positions the system as a
-retrospective surveillance and forensic screening tool rather than
-a real-time alert mechanism. The lag is consistent with the
-day-ahead nature of the underlying market (daily auction, not
-continuous trading) and with the structural duration of detected
-episodes (heat waves, regulatory shocks, generation restrictions
-develop over days or weeks). Real-time surveillance would require
-intraday continuous-market data (XBID) and a substantially different
-methodology.
-
-\paragraph{Lag decomposition (ablation across 9 cascade variants).}
-To attribute the $180$~h median lag, we run an ablation across nine
-cascade specifications
-(\texttt{scripts/ablate\_lag\_components.py},
+To attribute the 180h median lag we run an ablation across nine
+cascade variants (\texttt{scripts/ablate\_lag\_components.py},
 \texttt{results/ablation\_lag\_components.csv}). Key findings:
-(i)~the AND-conjunction with IsolationForest and CUSUM gates is
-\emph{not} the dominant source of the Orange-level lag --- removing
-both gates (variant V2, $|z| \geq p_{99}$ régime-specific only)
-yields $185$~h median lag against $180$~h baseline, a five-hour
-difference; (ii)~the full Red-alert cascade
+(i) removing the IsolationForest and CUSUM gates (V2, only
+$|z| \geq p_{99}$) yields a 185h median lag against 180h baseline,
+five hours; the AND cascade is \emph{not} the dominant source of
+the Orange-level lag. (ii) The full Red-alert cascade
 ($|z| \geq p_{99} \wedge \mathrm{IF} \geq p_{95} \wedge
-\mathrm{CUSUM} \geq 3$h) does carry massive lag at the Red level
-($777$~h median, recall $0{,}54$), confirming over-strict
-Red-alert calibration; (iii)~reducing the rolling window to 24~h is
-strictly worse (median lag $1281$~h, recall $0{,}25$), because the
-régime-specific $p_{99}$ threshold inflates from $6{,}12$ to $9{,}11$
-on a short-window distribution with heavier sample-variance tails;
-(iv)~an EWMA estimator ($\lambda_\mu = 0{,}94$,
-$\lambda_{\sigma^2} = 0{,}97$) with régime-specific thresholds
-calibrated to the $p_{95}$ of $|z_{\text{EWMA}}|$ on the training
-half of each regime, combined with persistence~$\geq 2$~h, achieves
-$144{,}5$~h median lag with preserved recall $0{,}833$ at the cost
-of a 40\% higher false-positive rate ($24{,}8$ vs $17{,}8$
-alerts/month). This configuration (V4b\_p2 in the ablation) is the
-recommended operational Pareto point for deployments that prioritise
-shorter lead time over alert precision.
+\mathrm{CUSUM} \geq 3$h) carries 777h median lag (recall 0.54);
+at the Red level the AND cascade \emph{is} the bottleneck.
+(iii) Reducing the rolling window to 24h is strictly worse
+(1281h median lag, recall 0.25): the régime-specific $p_{99}$
+threshold inflates from $6.12$ to $9.11$ on a short-window
+distribution with heavier sample-variance tails. (iv) An EWMA
+estimator ($\lambda_\mu = 0.94, \lambda_{\sigma^2} = 0.97$) with
+régime-specific thresholds calibrated at $p_{95}$ of $|z_{\text{EWMA}}|$
+on the training half and persistence $\geq 2$h achieves 144.5h
+median lag with preserved recall 0.833 at the cost of a 40\% higher
+false-positive rate (24.8 vs 17.8 alerts/month). This configuration
+(V4b\_p2) is the recommended operational Pareto point for
+deployments prioritising lead time over alert precision.
 
-\paragraph{Extensions tested without improvement.} Two
-methodologically natural extensions were implemented and rejected on
-empirical grounds. We document them so that subsequent work does not
-re-invest effort on the same paths.
+\subsection{Extensions tested without improvement}\label{sec:extensions}
+
+Three methodologically natural extensions were implemented and
+rejected on empirical grounds.
 
 \emph{(i) Day-ahead renewable forecasts as features.} We integrated
 the four publicly available D-1 renewable forecasts (ES wind and
-solar from ESIOS indicators 541 and 542; FR wind and solar from RTE
-OpenData \texttt{production\_forecast}), giving $30$ features instead
-of $26$. Although the four new features appear in the top 12 of the
-v3-mean permutation-importance ranking (\texttt{fr\_solar\_fc} at
-position 5, \texttt{es\_solar\_fc} at 12 in the augmented run), they
-do not improve out-of-sample RMSE. The Diebold--Mariano test on
-squared-error loss between v3-mean with and without renewables yields
-LR statistic $= -3{,}83$ ($p = 0{,}0001$) \emph{in favour of the
-specification without renewables}, with mean squared-error
-differential $-2{,}11$. Pinball loss at $q = 0{,}95$ is unchanged
-($0{,}450$ vs $0{,}438$). Interpretation: the existing
-\texttt{FEATURES\_A\_CLEAN} set --- spread lags, rolling statistics
-and shared fundamentals --- already encodes the predictive
-information that day-ahead renewable forecasts would contribute. The
-result is consistent with the day-ahead auction having already
-internalized those forecasts at the moment of price discovery. Full
-results in \texttt{results/renewables\_ablation.csv}; merged dataset
-in \texttt{data/processed/mibel\_dataset\_20190101\_20241231\_v4.parquet}.
+solar from ESIOS 541, 542; FR wind and solar from RTE OpenData
+\texttt{production\_forecast}), $30$ features instead of $26$.
+Although the four new features appear in the top 12 of the v3-mean
+permutation importance, they do not improve RMSE. The DM test on
+squared-error loss between v3-mean with and without renewables
+yields stat $= -3.83$ ($p = 0.0001$) in favour of the specification
+without renewables, mean differential $-2.11$. Pinball loss at
+$q = 0.95$ is unchanged. The DA auction already internalises the
+forecasts at the moment of price discovery; the lagged exogenous
+forecast at hourly resolution adds no detectable predictive signal
+beyond the spread's own lags. Full results in
+\texttt{results/renewables\_ablation.csv}.
 
-\emph{(ii) Decomposed forecasting.} Following \citet{Lago2021}, we
-implemented a decomposed specification with two separate XGBoost
-models targeting \texttt{price\_es} and \texttt{price\_fr}
-respectively, both with own-price lags and shared fundamentals, and
-combined the predictions as $\hat{p}_{\text{spread}} =
-\hat{p}_{\text{ES}} - \hat{p}_{\text{FR}}$. The intuition is that
-each component model can exploit its full price-level signal rather
-than the differenced quantity. Empirically the result is the
-opposite: decomposed forecasting yields RMSE $= 3{,}77$~€/MWh against
-$3{,}41$ for direct, with Diebold--Mariano LR $= +2{,}84$
-($p = 0{,}0045$) in favour of direct; pinball loss at $q = 0{,}95$
-is $0{,}93$ vs $0{,}44$. The component models each have substantial
-residual variance ($\mathrm{RMSE}_{\text{ES}} = 3{,}99$,
-$\mathrm{RMSE}_{\text{FR}} = 5{,}47$); subtraction does not cancel
+\emph{(ii) Decomposed forecasting.} Following the strategy of
+\citet{Lago2021} we trained two separate XGBoost models targeting
+\texttt{price\_es} and \texttt{price\_fr} and combined them as
+$\hat{p}_{\text{spread}} = \hat{p}_{\text{ES}} -
+\hat{p}_{\text{FR}}$. Empirically the result is worse: RMSE
+$3.77$ vs $3.41$ for direct, DM stat $+2.84$
+($p = 0.0045$) in favour of direct; pinball at $q = 0.95$
+$0.93$ vs $0.44$. The component models each carry
+substantial residual variance ($\mathrm{RMSE}_{\text{ES}} = 3.99$,
+$\mathrm{RMSE}_{\text{FR}} = 5.47$); subtraction does not cancel
 errors enough to beat a model trained directly on the lower-variance
-target. The direct model implicitly learns which factors matter for
-the difference and does not waste capacity modelling common
-components that cancel by construction. Implementation in
-\texttt{scripts/train\_decomposed\_es\_fr.py}; results in
-\texttt{results/decomposed\_vs\_direct.csv}.
+target.
 
 \emph{(iii) Nuclear availability and demand forecasts.} We added
 three further structural features --- French aggregated nuclear
-availability (RTE \texttt{eco2mix} realized generation lagged 24~h to
-avoid leakage), Spanish day-ahead demand forecast (ESIOS indicator
-460) and French day-ahead demand forecast (RTE \texttt{prevision\_j1})
---- and re-trained both v3-mean and v4-quantile on the
-$29$- and $33$-feature variants. None of the augmented configurations
-improves the baseline on the common 2024 test set (Table~X in
-\texttt{results/v5\_features\_comparison.csv}). For v3-mean, RMSE
-deteriorates from $3{,}42$ to $3{,}53$ (BASE+ND) and to $3{,}79$
-(BASE+ALL); the Diebold--Mariano test on squared-error loss favours
-BASE in both cases ($p = 0{,}12$ and $p < 10^{-3}$ respectively).
-For v4-quantile, pinball loss at $q = 0{,}95$ deteriorates from
-$0{,}232$ (BASE) to $0{,}276$ (BASE+ND) and $0{,}265$ (BASE+ALL); the
-Giacomini--White conditional test rejects equality with
-$p \leq 10^{-3}$ in favour of BASE in both cases. The nuclear and
-demand features do appear in the top 12 of permutation importance
-(\texttt{es\_demand\_fc} at position 9 in BASE+ALL), so the model
-does use them; but the marginal information they contribute is
-overwhelmed by the cost of the additional dimensions. The pattern is
-the same as for renewables: the day-ahead spread already integrates
-demand and supply expectations at the moment of market clearing, and
-lagged exogenous forecasts at hourly resolution add no detectable
-predictive signal beyond the spread's own short-horizon lags.
-Implementation in \texttt{scripts/compare\_v5\_features.py}; merged
-dataset in
-\texttt{data/processed/mibel\_dataset\_20190101\_20241231\_v5.parquet}.
+availability (RTE \texttt{eco2mix} realised generation lagged 24h
+to avoid leakage), Spanish day-ahead demand forecast (ESIOS 460) and
+French day-ahead demand forecast (RTE \texttt{prevision\_j1}) ---
+and re-trained both v3-mean and v4-quantile on the $29$- and
+$33$-feature variants. None improves the baseline. For v3-mean,
+RMSE deteriorates from $3.42$ to $3.79$ €/MWh (BASE+ALL,
+DM in favour of BASE, $p < 10^{-3}$). For v4-quantile, pinball
+loss at $q = 0.95$ deteriorates from $0.232$ to $0.265$
+(GW $p \leq 10^{-3}$ in favour of BASE).
+Full results in \texttt{results/v5\_features\_comparison.csv};
+merged dataset in \texttt{data/processed/mibel\_dataset\_20190101\_20241231\_v5.parquet}.
 
-The cumulative empirical reading across (i)--(iii) is that the
-$26$-feature \texttt{FEATURES\_A\_CLEAN} baseline sits at the
-informational frontier achievable with publicly available day-ahead
-data at hourly resolution. Methodologically natural extensions
-(decomposed forecasting, additional structural features) were
-implemented and rejected. Further marginal gains would likely
-require either intraday transactional data (XBID order book) or
-sub-daily granularity that is outside the open-data scope of this
-work.
+The cumulative empirical reading is that the $26$-feature
+\texttt{FEATURES\_A\_CLEAN} baseline sits at the informational
+frontier achievable with publicly available day-ahead data at hourly
+resolution. The two pre-registered hypothesis tests reported next
+(H1, H2) further establish this ceiling formally on the binary
+classification of the congestion regime.
 
-\paragraph{REMIT II positioning revisited.} The $180$~h median lag
-of the Orange-level cascade is \emph{compliant} with REMIT~II by
-construction. The four-week notification clock under
-Articles~15(1) and~15(2) of the REMIT Regulation, as transposed by
-\citet{ACER2024} \S431--432 (p.~118), begins at the moment of
-\emph{awareness} of the suspicious event, not at its occurrence:
-``\emph{without further delay and in any event no later than four
+\subsection{H1 (pre-registered): binary classifier with rich features}\label{sec:h1}
+
+We pre-register, before running the experiment:
+
+\begin{quote}
+\textbf{H1}: a logistic-regression classifier with physical features
+on $S_t = \mathbb{1}\{|\mathrm{spread}_t| > 0.5\,\text{€/MWh}\}$
+achieves AUC-ROC $> 0.95$ \emph{and} AUC-PR $> 0.60$ in walk-forward
+weekly evaluation over 2024.
+\end{quote}
+
+The features are six cyclical time variables, ES and FR national
+holidays, $|\mathrm{NTC}|$ ES$\to$FR and FR$\to$ES, the
+\texttt{ntc\_is\_observed} flag, state lags at 24h and 168h, the
+current run-length of the state at $t-1$, and one-hot regime
+dummies; rich variant adds the seven raw v5 features
+(renewable and demand forecasts, FR nuclear availability) and eight
+physically motivated derived features (penetration ratios,
+asymmetries, demand log-ratio, nuclear-to-demand ratio).
+
+\begin{table}[H]
+\centering
+\small
+\caption{H1 evaluation. Walk-forward weekly on 2024.}
+\label{tab:h1}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Model} & \textbf{n features} & \textbf{AUC-ROC} &
+\textbf{AUC-PR} & \textbf{Brier} \\
+\midrule
+Logistic, basic                & 18 & 0.784 & 0.221 & 0.231 \\
+LightGBM, basic                & 18 & 0.856 & 0.357 & 0.053 \\
+Logistic, rich (+renewables, +demand, +nuclear) & 33 & 0.806 & 0.195 & 0.213 \\
+LightGBM, rich                                  & 33 & \textbf{0.868} & \textbf{0.382} & \textbf{0.046} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+H1 is empirically falsified: with logistic the AUC-ROC reaches
+$0.806$ (not $> 0.95$) and AUC-PR $0.195$ (not $> 0.60$); the
+non-linear LightGBM with rich features reaches AUC-ROC $0.868$ ---
+still below the pre-registered threshold by $0.08$ points. A
+sensitivity sweep over the binary threshold $\tau \in \{0.5, 1, 2, 5\}$
+€/MWh (\texttt{results/v2\_stage\_a\_threshold\_sweep.csv}) confirms
+that AUC plateaus around $0.86$ regardless of $\tau$. The threshold
+is not the problem; the data does not support AUC $> 0.95$ for
+ex-ante binary classification. The top feature by gain is
+\texttt{run\_length\_prev} with a wide margin over all other
+features, indicating that the classifier learns persistence of the
+state more than any specific physical driver.
+
+\subsection{H2 (pre-registered): Gaussian HMM with 3 states}\label{sec:h2}
+
+We pre-register, before running the experiment:
+
+\begin{quote}
+\textbf{H2}: a Gaussian Hidden Markov Model with 3 latent states
+({coupled, tensioned, decoupled}) with emissions conditional on the
+continuous physical features achieves AUC-ROC $> 0.92$ \emph{and}
+AUC-PR $> 0.45$ in walk-forward weekly evaluation over 2024,
+where the prediction is the smoothed posterior
+$P(\text{state}_t = \text{decoupled} \mid x_{1:t-1})$.
+\end{quote}
+
+The implementation is \texttt{hmmlearn.GaussianHMM(n\_components=3,
+covariance\_type='full')} on 23 continuous physical features
+(cyclical time, NTC, renewable forecasts, demand forecasts, nuclear
+availability, and 8 derived penetration and asymmetry ratios);
+discrete and categorical variables are excluded as they violate the
+Gaussian emission assumption. Decoupled state identification is
+post-hoc by ranking the three states on the fraction of empirical
+$S_t = 1$ assigned to them by Viterbi on training data.
+
+\begin{table}[H]
+\centering
+\small
+\caption{H2 evaluation. Walk-forward weekly on 2024.}
+\label{tab:h2}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Model} & \textbf{AUC-ROC} & \textbf{AUC-PR} & \textbf{Brier} \\
+\midrule
+LightGBM rich (best non-HMM)          & 0.868 & 0.382 & 0.046 \\
+Gaussian HMM 3-state                  & 0.600 & 0.076 & 0.376 \\
+$\Delta$ HMM $-$ LightGBM             & $-0.27$ & $-0.31$ & worse \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+H2 is falsified by a wide margin. The HMM correctly identifies the
+decoupled state in 52/52 weeks post-hoc, so the failure is in
+predictive capacity rather than in state mapping. Several weeks
+trigger EM convergence warnings, consistent with the joint
+distribution of the features not being well approximated by a
+mixture of three multivariate Gaussians (bounded sin/cos features,
+categorical flags, and the JAO/implicit jump in NTC violate the
+Gaussian emission assumption).
+
+\subsection{Empirical ceiling and implications}\label{sec:ceiling}
+
+The combination of falsified H1 (best AUC-ROC $\leq 0.87$ with
+LightGBM and 33 features) and falsified H2 (HMM AUC-ROC $0.60$,
+worse than LightGBM by $0.27$) establishes the following empirical
+claim:
+
+\begin{quote}
+The ex-ante prediction of the ES--FR binary congestion regime
+$S_t = \mathbb{1}\{|\mathrm{spread}_t| > 0.5\}$ from publicly
+available hourly Day-Ahead features has an empirical ceiling
+of AUC-ROC $\approx 0.87$. The residual transition noise is
+stochastic rather than hidden-state separable, and persistence
+of the observed state is the dominant predictor by a wide margin
+over any physical driver. The v1 cascade reported in
+Sections~\ref{sec:operational}--\ref{sec:pareto} achieves
+performance commensurate with this ceiling.
+\end{quote}
+
+Three implications follow. First, further marginal gains on
+\emph{ex-ante} prediction with these data are unlikely; the
+operational system is at the empirical frontier. Second, real
+improvement requires data not available at hourly DA granularity:
+intraday OMIE forecasts and clearing, REE/RTE physical flows
+(rather than published NTC), and XBID transactional data --- all of
+which are partly public but require additional integration work or
+operator agreements. Third, the surveillance positioning of the
+system is unchanged: the cascade is a screening filter compatible
+with REMIT II Article 15(1)/15(2), where the four-week notification
+clock starts at awareness (not at occurrence) and §457
+(\citealp{ACER2024}, p.~122) explicitly admits notification of past
+breaches with documented justification of the delay.
+
+\subsection{REMIT II positioning under the empirical
+limits}\label{sec:remit-positioning}
+
+The 180h median lag of the Orange-level cascade is compliant with
+REMIT II by construction:
+
+\begin{quote}
+\textit{``without further delay and in any event no later than four
 weeks from the day on which that person becomes aware of the
-suspicious event}''. A median lag of $\sim 7{,}5$~days from
-documented event onset to first alert falls comfortably within the
-four-week notification window. Moreover, \citet{ACER2024} \S457
-(p.~122) explicitly admits notification of past breaches provided
-the delay between event occurrence and notification is
-documented and justified --- the régime-specific calibration and
-residual statistics produced by the system constitute precisely
-that justification. ACER also expects automated alerts to undergo
-human screening, data quality control, and confirmation with
-circumstantial information before notification (\citealp{ACER2024}
-footnote 182, p.~122); the Green/Amber/Orange/Red cascade is
-exactly the structured filter that this expectation requires. The
-system therefore covers Articles~3 and~5 (insider trading and
-market manipulation through suspicious spread dynamics);
-Article~4 (publication of inside information) is \emph{not}
-covered, consistent with \citet{ACER2024} \S438 (p.~120) requiring
-an active approach for Article~4 monitoring rather than treating it
-as a side product of Article~3/5 surveillance. The remaining gap
+suspicious event''}---ACER Guidance on REMIT, 6.1st Edition,
+§431 p.~118 and §432 p.~118 (citing Articles 15(1) and 15(2)).
+\end{quote}
+
+A 180h ($\approx 7.5$ days) lag from documented event onset to
+first alert falls comfortably within the four-week notification
+window. §457 (p.~122) explicitly admits notification of past
+breaches provided the delay is documented and justifiable, and
+\S464 (p.~123) on Article 15(3) requires PPATs and PPETs to
+maintain \emph{``effective arrangements, systems and procedures
+to identify potential breaches of Article 3, 4 or 5''} ---
+which the Verde/Ámbar/Naranja/Roja cascade provides. ACER expects
+automated alerts to undergo human screening before notification
+(\citealp{ACER2024}, footnote 182, p.~122); the cascade is the
+structured filter that meets this expectation. Article 4
+(publication of inside information) is \emph{not} covered ---
+consistent with \citet{ACER2024} §438 p.~120 requiring an active
+approach for Article 4 monitoring rather than treating it as a
+side product of Article 3/5 surveillance. The residual gap
 relative to a Tier-3 ACER surveillance tool is the granularity of
 the data (aggregate day-ahead prices rather than transactional
-REMIT reports), not the latency.
-
-\paragraph{Overcalibration of the default cascade.} The default
-cascade configuration analysed in Section~\ref{sec:anomalies}
-operates above the Pareto elbow identified in
-Section~\ref{sec:opcal} (operational calibration). This reflects
-two calibration inheritances from earlier versions of the pipeline:
-the in-sample IF percentile and the 3-hour CUSUM persistence
-threshold. The default is preserved in the reported artefacts for
-consistency with the experimental design; the elbow configuration
-is reported as the recommended operational deployment.
+REMIT reports), not the alert latency.
 
 % =====================================================================
-\section{Conclusions and next steps}
+\section{Conclusions and next steps}\label{sec:conclusions}
 % =====================================================================
 
-The project explores the feasibility of a residual indicator derived
-from economic fundamentals as input to a broader market-surveillance
-system. The main findings are:
+The paper delivers two complementary contributions on the
+ES--FR Day-Ahead spread surveillance problem.
 
 \begin{enumerate}
-\item \textbf{The residual as signal.} On the 2024 test set the
-fundamentals model achieves $R^2 = 0{,}539$ (notably modest with
-respect to the literature on zonal pricing but consistent with the
-intra-day noise of bilateral spreads) and the residuals carry
-incremental information over the raw spread, materialised in a
-conservative cascade of $61$~Red Alerts over 2022--2024 (default
-cascade).
+\item \textbf{Operational}: an alert cascade
+(Verde/Ámbar/Naranja/Roja) calibrated on régime-specific
+percentiles, validated on a pre-specified panel of 40 documented
+events with recall $0.833$ and a Pareto-optimal calibration at
+$4.3$ alerts/month with precision@72h of $0.212$. The cascade is
+compliant with REMIT II Articles 15(1)/15(2) and §457, positioned
+as the structured human-screening filter expected by ACER.
 
-\item \textbf{Main model vs competitive benchmarks.} The XGBoost
-achieves lower RMSE than the AR(1), AR(24) and LASSO benchmarks on
-the 2024 test ($3{,}218$ vs $3{,}424/3{,}427/3{,}376$~€/MWh), but
-the Diebold--Mariano test does not reach 5\% significance with
-$n = 8\,783$ ($p \in [0{,}06;\,0{,}12]$). Statistical significance
-is maintained only against the naive benchmarks of persistence and
-zero level ($p < 10^{-3}$). The model's operational advantage
-concentrates in the tail of the distribution rather than in the
-average fit, aligned with its surveillance use.
-
-\item \textbf{Quantile companion model establishes tail
-superiority.} The mean-error Model A v3 is dominated by AR(1) on
-pinball loss at $q = 0{,}95$ ($0{,}50$ vs $0{,}33$,
-Giacomini--White $p = 0{,}0005$ in favour of AR(1)) --- a
-mean-error model cannot beat an autoregressive benchmark on a
-quantile metric the autoregressive process happens to track via
-persistence. Re-specifying the XGBoost objective to
-\texttt{reg:quantileerror} with $\alpha = 0{,}95$ on the identical
-feature set (Model A v4) inverts the result: pinball at $q = 0{,}95$
-falls to $0{,}27$, and the Giacomini--White conditional test rejects
-equal predictive ability against both AR(1) and AR(24) with
-$p < 10^{-3}$. The companion specification carries the formal
-econometric evidence that fundamentals add tail information beyond
-pure autoregression once the model is matched to the metric. The
-trade-off is a higher RMSE ($6{,}24$ vs $3{,}22$~€/MWh for A v3),
-expected from a quantile regressor and operationally absorbed by
-keeping A v3 as the cascade base.
-
-\item \textbf{External validation: the contribution is the alert
-hierarchy, not raw recall.} Against the pre-specified panel of 40
-verified events, the system detects $83\%$ of in-window events
-($20/24$). A naive $|\mathrm{spread}| > p_{99}$ régime-specific
-benchmark detects $75\%$ when its threshold is calibrated on the
-full regime (the standard reading in this paper), and $87{,}5\%$
-when calibrated train-only on the first $50\%$ of each regime
-(ablation variant \texttt{V\_naive\_spread\_p99}). Neither
-comparison reaches formal significance with $n = 24$ (McNemar
-$p = 0{,}500$, Wilson CI95\% for the system: $[0{,}641;\,0{,}933]$).
-The cascade does not deliver a robust raw-recall advantage over a
-competently calibrated naive; its operational value lies in the
-calibratable Green/Amber/Orange/Red hierarchy with explicit
-precision--coverage trade-off (Section~\ref{sec:opcal}), which a
-single-threshold benchmark cannot reproduce.
-
-\item \textbf{Régime-specific models.} The régime-specific
-specification outperforms the unified pooled model by an ample
-margin in \texttt{crisis\_y\_excepcion} ($-18{,}1\%$ RMSE), while
-in \texttt{pre\_crisis} and \texttt{post\_excepcion} both
-specifications are in technical tie ($<2\%$ RMSE in either
-direction). The evidence rules out the strong hypothesis of
-transfer learning dominating across regimes and reinforces the
-relevance of régime-specific models for non-stationary regulatory
-periods.
-
-\item \textbf{Operational calibration is a substantive degree of
-freedom.} The default cascade operates above the Pareto elbow of
-the precision-coverage trade-off. The elbow configuration (4{,}3
-alerts/month) achieves the same coverage at five times lower
-operational load and 43\% higher precision@72h; this is reported as
-guidance for capacity-adjusted deployment, not as a substitute for
-the default cascade.
+\item \textbf{Methodological}: pre-registered hypotheses H1
+(binary classifier with rich physical features) and H2 (Gaussian
+HMM with 3 latent states) both falsified empirically by
+walk-forward weekly evaluation; an upper empirical ceiling of
+AUC-ROC $\approx 0.87$ for ex-ante binary prediction of the
+congestion regime from publicly available hourly DA data. The
+two-model architecture (mean-error for cascade, quantile companion
+for tail econometrics) achieves what these data allow: a
+Giacomini--White conditional rejection of equal predictive ability
+versus AR(1) at $q = 0.95$ ($p < 10^{-3}$) on the 2024 test, and
+approximate but not exact Kupiec calibration of the upper $5\%$
+exceedance rate ($5.58\%$ empirical vs $5\%$ nominal,
+$p = 0.014$).
 \end{enumerate}
 
-\paragraph{Next steps.} (i)~Integration of hourly demand
-(REE/ESIOS) and aggregate supply data (PMD/ESIOS) to enrich the
-feature set. (ii)~Adaptation to the quarter-hourly resolution of
-MIBEL deployed in 2025. (iii)~Expansion of the event panel to
-hourly granularity through encoding of CNMC technical notes and
-OMIE/REE bulletins. (iv)~Replacement of TTF/EUA from
-\texttt{yfinance} by licensed Euronext/EEX sources.
-(v)~Formal regime-switching models (Markov-switching) instead of
-calendar-based regulatory splits. (vi)~Adoption of the Pareto-elbow
-calibration ($z_{p_{99}}$ régime-specific, $\mathrm{IF}_{p_{90}}$
-out-of-sample, $\mathrm{CUSUM} \geq 1$h) as the default operational
-configuration, replacing the current in-sample calibration. This
-recalibration preserves recall@event and improves precision@72h
-from $0{,}148$ to $0{,}212$ with a five-fold reduction in alert
-volume. (vii)~Evaluation of the EWMA-based cascade variant V4b\_p2
-($\lambda_\mu = 0{,}94$, $\lambda_{\sigma^2} = 0{,}97$,
-$k = p_{95}$ régime-specific, persistence~$\geq 2$~h) identified in
-the lag-decomposition ablation as the operational Pareto point for
-shorter lead time ($144{,}5$~h median lag vs $180$~h baseline) at
-the cost of a 40\% higher false-positive rate; deployment choice
-depends on the analyst-capacity profile of the regulator.
+\paragraph{Data requirements for a successor system.}
+A genuine improvement on the empirical ceiling requires inputs
+that the current DA-only feature set cannot reach:
+
+\begin{itemize}
+\item \textbf{Intraday OMIE} sessions and clearing (partially
+public via OMIE API; integration not trivial).
+\item \textbf{Physical flows} on the ES--FR interconnection from
+REE and RTE operational feeds, rather than the NTC values
+published by JAO.
+\item \textbf{REMIT transactional reports} at the order-by-order
+level (XBID for the European intraday continuous market) ---
+required for a Tier-3 ACER surveillance tool, not available with
+open-data access.
+\item \textbf{Sub-hourly granularity} (15-minute resolution) for
+the MIBEL market post-2025, which will require migration of the
+entire pipeline.
+\end{itemize}
+
+\paragraph{Pareto-elbow recommendation.} For deployments under the
+current data scope we recommend the elbow operating point of
+Section~\ref{sec:pareto}
+($z_{p_{99}}$ régime-specific, $\mathrm{IF}_{p_{90}}$ OOS,
+$\mathrm{CUSUM} \geq 1$h) over the default cascade configuration:
+identical recall, five-fold lower alert volume, and 43\% higher
+precision@72h. For deployments prioritising lead time over
+precision, the V4b\_p2 EWMA configuration of
+Section~\ref{sec:lag-ablation} reaches a 144.5h median lag at the
+cost of a 40\% higher false-positive rate.
 
 % =====================================================================
 \bibliographystyle{apalike}
