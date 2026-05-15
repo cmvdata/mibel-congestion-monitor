@@ -1176,21 +1176,85 @@ mixture of three multivariate Gaussians (bounded sin/cos features,
 categorical flags, and the JAO/implicit jump in NTC violate the
 Gaussian emission assumption).
 
+\subsection{H1$'$ (pre-registered): adding the ESIOS scheduled
+exchange}\label{sec:h1prime}
+
+After H1 and H2 falsification, the empirical-limits diagnosis was that
+the missing signal was the explicit physical utilisation of the
+interconnection, not the demand or renewable forecasts already
+tested. The ESIOS API (REE) publishes the day-ahead scheduled
+commercial exchange ES$\leftrightarrow$FR via indicators 28 (import
+FR$\to$ES, PBF) and 32 (export ES$\to$FR, PBF). The two are mutually
+exclusive per hour and combine into a single net schedule (positive
+$=$ ES exports). Coverage on the master timestamps is $99.92\%$. We
+derive three features:
+\texttt{scheduled\_net\_es\_to\_fr\_mw},
+\texttt{scheduled\_abs\_mw}, and
+\texttt{utilization\_d1 $= |$scheduled$|/$NTC} on the relevant
+direction.
+
+We pre-register, before running the experiment:
+
+\begin{quote}
+\textbf{H1$'$}: adding the three ESIOS-derived features to the
+rich 33-feature set raises LightGBM Stage A performance to
+AUC-ROC $> 0.92$ \emph{and} AUC-PR $> 0.45$ in walk-forward weekly
+evaluation over 2024. AUC-ROC $\in [0.88, 0.92]$ is recorded as a
+\emph{partial} result; AUC-ROC $\leq 0.88$ as falsified.
+\end{quote}
+
+\begin{table}[H]
+\centering
+\small
+\caption{H1$'$ evaluation. Walk-forward weekly on 2024.}
+\label{tab:h1prime}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Model} & \textbf{n features} & \textbf{AUC-ROC} &
+\textbf{AUC-PR} & \textbf{Brier} \\
+\midrule
+LightGBM, rich (without ESIOS)         & 33 & 0.868 & 0.382 & 0.046 \\
+LightGBM, rich + ESIOS (\textbf{H1$'$})  & 36 & \textbf{0.8815} & \textbf{0.4085} & 0.044 \\
+$\Delta$ over no-ESIOS baseline        &  & $+0.014$ & $+0.027$ & better \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+H1$'$ \textbf{partial}: the AUC-ROC of $0.8815$ falls inside the
+$[0.88, 0.92]$ band. The ceiling moves but is not broken.
+\texttt{scheduled\_net\_es\_to\_fr\_mw} ranks fifth in LightGBM gain
+(among 36 features), confirming the model actively uses the
+scheduled exchange. The reading is that the day-ahead schedule is
+\emph{partially} but not fully informative for ex-ante onset
+prediction. This is consistent with the institutional mechanism:
+the schedule is itself an output of the day-ahead clearing process,
+so the clearing already incorporates the information that the
+schedule reveals; the incremental signal beyond demand, renewable
+generation and nuclear availability is modest. A complete break of
+the ceiling likely requires intra-day data (XBID transactions or
+post-clearing realised flows) that this work does not access.
+
 \subsection{Empirical ceiling and implications}\label{sec:ceiling}
 
 The combination of falsified H1 (best AUC-ROC $\leq 0.87$ with
-LightGBM and 33 features) and falsified H2 (HMM AUC-ROC $0.60$,
-worse than LightGBM by $0.27$) establishes the following empirical
-claim:
+LightGBM and 33 features), falsified H2 (HMM AUC-ROC $0.60$, worse
+than LightGBM by $0.27$), and partial H1$'$ (LightGBM AUC-ROC
+$0.8815$ with 36 features including the ESIOS scheduled exchange)
+establishes the following empirical claim:
 
 \begin{quote}
 The ex-ante prediction of the ES--FR binary congestion regime
 $S_t = \mathbb{1}\{|\mathrm{spread}_t| > 0.5\}$ from publicly
 available hourly Day-Ahead features has an empirical ceiling
-of AUC-ROC $\approx 0.87$. The residual transition noise is
-stochastic rather than hidden-state separable, and persistence
-of the observed state is the dominant predictor by a wide margin
-over any physical driver. The v1 cascade reported in
+of AUC-ROC $\approx 0.88$, reached when the feature set includes
+the day-ahead scheduled commercial exchange (ESIOS indicators 28
+and 32). The residual transition noise is stochastic rather than
+hidden-state separable; persistence of the observed state is the
+dominant predictor by a wide margin over any physical driver; and
+the scheduled exchange itself is partly endogenous to the
+day-ahead clearing, limiting its incremental information beyond
+the demand, renewable and nuclear features already in the model.
+The v1 cascade reported in
 Sections~\ref{sec:operational}--\ref{sec:pareto} achieves
 performance commensurate with this ceiling.
 \end{quote}

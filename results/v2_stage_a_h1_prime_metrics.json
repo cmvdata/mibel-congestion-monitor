@@ -1,0 +1,29 @@
+{
+  "n_features": 36,
+  "new_esios_features": [
+    "scheduled_net_es_to_fr_mw",
+    "scheduled_abs_mw",
+    "utilization_d1"
+  ],
+  "positive_rate": 0.03910146582905007,
+  "logistic": {
+    "auc_roc": 0.8050060785945852,
+    "auc_pr": 0.19727009295506903,
+    "brier": 0.21665755050296656,
+    "n_transitions": 170,
+    "median_lead_h": 48.0,
+    "mean_lead_h": 41.64705882352941,
+    "frac_predicted_in_advance": 0.9529411764705882
+  },
+  "lightgbm": {
+    "auc_roc": 0.8814517983878033,
+    "auc_pr": 0.40851292563259833,
+    "brier": 0.04363649610082411,
+    "n_transitions": 170,
+    "median_lead_h": 16.5,
+    "mean_lead_h": 20.011764705882353,
+    "frac_predicted_in_advance": 0.611764705882353
+  },
+  "H1_prime_verdict": "PARTIAL",
+  "H1_prime_confirmed_by_lgbm": false
+}
